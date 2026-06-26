@@ -121,6 +121,30 @@ input::placeholder { color:#4b5563; }
 var lat = 0, lon = 0;
 var mapShowing = false;
 
+window.addEventListener('load', function() {
+  var p2 = new URLSearchParams(window.location.search);
+  if (!p2.get('lat') && navigator.geolocation) {
+    document.getElementById('loc-name').textContent = 'Detecting location...';
+    navigator.geolocation.getCurrentPosition(function(p) {
+      lat = p.coords.latitude;
+      lon = p.coords.longitude;
+      fetch('https://nominatim.openstreetmap.org/reverse?lat=' + lat + '&lon=' + lon + '&format=json')
+        .then(function(r){return r.json();})
+        .then(function(d){
+          var name = (d.address && (d.address.suburb || d.address.city || d.address.town || d.address.village)) || (lat.toFixed(4)+'N');
+          document.getElementById('loc-name').textContent = name;
+          document.getElementById('loc-coords').textContent = lat.toFixed(4)+'N · '+lon.toFixed(4)+'E';
+        }).catch(function(){
+          document.getElementById('loc-name').textContent = lat.toFixed(4)+'N, '+lon.toFixed(4)+'E';
+          document.getElementById('loc-coords').textContent = 'GPS detected';
+        });
+    }, function(){
+      document.getElementById('loc-name').textContent = 'Select your location';
+      document.getElementById('loc-coords').textContent = 'Click "Use My Current Location" below';
+    });
+  }
+});
+
 // Read from URL params if coming from satellite page
 var params = new URLSearchParams(window.location.search);
 if (params.get('lat') && params.get('lon')) {
