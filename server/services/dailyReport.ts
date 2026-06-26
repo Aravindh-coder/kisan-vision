@@ -264,4 +264,48 @@ async function sendDailyReports() {
   } catch(e: any) { console.error('Report error:', e.message) }
 }
 
-export { sendDailyReports }
+async function sendWeatherSubscriberReports() {
+  const fs = require('fs')
+  const path = require('path')
+  const DB_FILE = path.join(__dirname, '../db/subscribers.json')
+  let subscribers: any[] = []
+  try {
+    if (fs.existsSync(DB_FILE)) subscribers = JSON.parse(fs.readFileSync(DB_FILE, 'utf-8'))
+  } catch { return }
+  console.log('Weather subscribers:', subscribers.length)
+  for (const sub of subscribers) {
+    try {
+      const weather = await fetchWeather(sub.lat, sub.lon)
+      const temp = weather.main?.temp || 28
+      const hum = weather.main?.humidity || 65
+      const wdesc = weather.weather?.[0]?.description || 'Clear sky'
+      const wind = weather.wind?.speed || 0
+      const rain = weather.rain?.['1h'] || 0
+      const irrigation = hum > 70 || rain > 2 ? 'No irrigation needed today' : 'Irrigation recommended today'
+      const today = new Date().toLocaleDateString('en-IN', { day:'2-digit', month:'long', year:'numeric' })
+      const message = `🌾 *KISAN-VISION Daily Weather*\n📅 ${today}\n📍 ${sub.locationName||'Your Location'}\n🌡️ Temp: ${temp.toFixed(1)}°C\n💧 Humidity: ${hum}%\n🌬️ Wind: ${wind} m/s\n☁️ ${wdesc}\n\n💦 ${irrigation}\n\nReply STOP to unsubscribe\n📡 KISAN-VISION`
+      if (sub.phone) {
+        try {
+          await twilioClient.messages.create({ from: process.env.TWILIO_WHATSAPP_FROM, to: 'whatsapp:' + sub.phone, body: message })
+          console.log('Weather WhatsApp sent to', sub.phone)
+        } catch(e: any) { console.error('WhatsApp failed:', e.message) }
+      }
+      if (sub.email) {
+        await transporter.sendMail({
+          from: '"KISAN-VISION 🛰️" <' + process.env.GMAIL_USER + '>',
+          to: sub.email,
+          subject: '🌾 KISAN-VISION Daily Weather - ' + (sub.locationName||'Your Location') + ' · ' + today,
+          text: message.replace(/\*/g, '')
+        })
+        console.log('Weather email sent to', sub.email)
+      }
+    } catch(e: any) { console.error('Subscriber report failed:', e.message) }
+  }
+}
+
+async function sendAllDailyReports() {
+  await sendDailyReports()
+  await sendWeatherSubscriberReports()
+}
+
+export { sendDailyReports, sendAllDailyReports }

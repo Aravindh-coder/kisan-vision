@@ -12,7 +12,7 @@ import reportRoutes from './routes/report'
 import cropDetectRoutes from './routes/cropDetect'
 import aiRoutes from './routes/ai'
 import cron from 'node-cron'
-import { sendDailyReports } from './services/dailyReport'
+import { sendAllDailyReports } from './services/dailyReport'
 
 dotenv.config()
 const app = express()
@@ -38,7 +38,7 @@ app.get('/api/health', (req, res) => {
 // Daily report at 6 AM every day
 cron.schedule('0 6 * * *', async () => {
   console.log('Running daily report job...')
-  await sendDailyReports()
+  await sendAllDailyReports()
 })
 
 // Send test report 3 seconds after server starts
