@@ -6,18 +6,22 @@ const router = express.Router()
 const DB_FILE = path.join(__dirname, '../db/subscribers.json')
 
 function saveSubscriber(data: any) {
-  let list: any[] = []
   try {
-    if (fs.existsSync(DB_FILE)) {
-      list = JSON.parse(fs.readFileSync(DB_FILE, 'utf-8'))
-    }
-  } catch {}
-  const idx = list.findIndex((s: any) => s.phone === data.phone || s.email === data.email)
-  const entry = { ...data, id: Date.now().toString(), createdAt: new Date().toISOString() }
-  if (idx >= 0) list[idx] = entry
-  else list.push(entry)
-  fs.mkdirSync(path.dirname(DB_FILE), { recursive: true })
-  fs.writeFileSync(DB_FILE, JSON.stringify(list, null, 2))
+    let list: any[] = []
+    try {
+      if (fs.existsSync(DB_FILE)) {
+        list = JSON.parse(fs.readFileSync(DB_FILE, 'utf-8'))
+      }
+    } catch {}
+    const idx = list.findIndex((s: any) => s.phone === data.phone || s.email === data.email)
+    const entry = { ...data, id: Date.now().toString(), createdAt: new Date().toISOString() }
+    if (idx >= 0) list[idx] = entry
+    else list.push(entry)
+    fs.mkdirSync(path.dirname(DB_FILE), { recursive: true })
+    fs.writeFileSync(DB_FILE, JSON.stringify(list, null, 2))
+  } catch (e) {
+    console.warn('saveSubscriber skipped (read-only fs):', (e as any)?.message)
+  }
 }
 
 async function getWeather(lat: number, lon: number) {
