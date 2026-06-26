@@ -51,7 +51,7 @@ nav { position:relative; z-index:10; background:rgba(2,10,2,0.95); border-bottom
   <button class="send-btn" id="sendBtn">Send</button>
 </div>
 <script>
-var GKEY = "GROQ_API_KEY_HERE";
+var GKEY = "";
 var farm = null;
 var sat = null;
 var hist = [];
@@ -101,9 +101,9 @@ function doSend() {
   var think = addMsg("KISAN AI is thinking...", "thinking");
   hist.push({role:"user", content:msg});
   var msgs = [{role:"system", content:sysPrompt()}].concat(hist);
-  fetch("https://api.groq.com/openai/v1/chat/completions", {
+  fetch("/api/ai/groq", {
     method: "POST",
-    headers: {"Content-Type":"application/json", "Authorization":"Bearer " + GKEY},
+    headers: {"Content-Type":"application/json"},
     body: JSON.stringify({model:"llama-3.3-70b-versatile", messages:msgs, max_tokens:600, temperature:0.7})
   }).then(function(r) { return r.json(); }).then(function(d) {
     think.remove();
