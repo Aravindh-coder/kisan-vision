@@ -1,5 +1,6 @@
 import ee from '@google/earthengine'
-import key from '../credentials/gee-key.json'
+// GEE key loaded from env on Render
+const key = process.env.GEE_KEY ? JSON.parse(process.env.GEE_KEY) : null
 
 let initialized = false
 
