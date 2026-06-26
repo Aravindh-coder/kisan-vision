@@ -1,73 +1,52 @@
-# React + TypeScript + Vite
+# 🛰️ KISAN-VISION
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+> AI-Powered Satellite Farm Intelligence Platform for Indian Farmers
 
-Currently, two official plugins are available:
+**🌐 Live Demo:** [https://kisan-vision.onrender.com](https://kisan-vision.onrender.com)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🚀 Features
 
-## React Compiler
+- 📡 **Real-time Satellite Analysis** — NDVI, NDWI, EVI indices via Sentinel-2 / Google Earth Engine
+- 🤖 **KISAN AI Chat** — Groq LLaMA 3.3 70B powered farm advisor with live satellite context
+- 🗺️ **Land Registration** — Draw farm boundaries on interactive map, auto-detect location
+- 🌾 **Crop Disease Detection** — Upload photos for instant AI disease diagnosis
+- 🌦️ **Weather Alerts** — Live weather with farming advisories
+- 📱 **WhatsApp Notifications** — Daily farm reports via Twilio
+- 📧 **Email Reports** — Automated daily satellite farm summaries
+- 🌐 **Trilingual** — English, Hindi, Tamil support
+- 🔐 **User Authentication** — Private land data per farmer account
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 🛠️ Tech Stack
 
-## Expanding the ESLint configuration
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React 18, TypeScript, Vite, Tailwind CSS |
+| Backend | Node.js, Express, TypeScript |
+| Database | MySQL (Aiven Cloud) |
+| ORM | Drizzle ORM |
+| AI Chat | Groq API (LLaMA 3.3 70B) |
+| AI Vision | Google Gemini 2.5 Flash |
+| Satellite | Google Earth Engine, Sentinel-2 |
+| Maps | Leaflet.js |
+| Notifications | Twilio WhatsApp, Nodemailer |
+| Process Manager | PM2 |
+| Hosting | Render.com |
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## 🔧 Local Setup
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+git clone https://github.com/Aravindh-coder/kisan-vision.git
+cd kisan-vision
+npm install
+cp .env.example .env   # Add your API keys
+npm run build
+node dist/server/index.js
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## 👨‍💻 Developer
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+**Aravindh A** — B.Tech CSE (AI), 3rd Year
+[LinkedIn](https://linkedin.com/in/aravindh-a-1290b8326) · [GitHub](https://github.com/Aravindh-coder)
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+---
+*Built for ISRO Hackathon 2024 — Empowering Indian farmers with satellite intelligence*
