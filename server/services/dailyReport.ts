@@ -210,7 +210,7 @@ function buildEmail(land: any, ndvi: number, ns: any, ms: any, ds: any, temp: nu
       ${ds.emoji==='🔴'?`<div style="color:#fca5a5;font-size:12px;margin-top:6px">⚠️ ${L.warn1}</div>`:''}
       ${ndvi<0.3?`<div style="color:#fca5a5;font-size:12px;margin-top:6px">🔴 ${L.warn2}</div>`:''}
     </div>
-    <p style="color:#1f2d1f;font-size:10px;text-align:center;margin:0">KISAN-VISION 🛰️ · ${L.footer}</p>
+    <p style="color:#1f2d1f;font-size:10px;text-align:center;margin:0">KISAN-VISION 🛰️ · ${L.footer}</p><p style="text-align:center;margin-top:8px"><a href="https://kisan-vision.onrender.com/weather-alert.html" style="color:#365f45;font-size:10px">Unsubscribe from daily reports</a></p>
   </div>
 </div>`
 }
