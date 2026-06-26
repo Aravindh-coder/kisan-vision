@@ -1,6 +1,8 @@
 import express from 'express'
 import fs from 'fs'
 import path from 'path'
+import twilio from 'twilio'
+import nodemailer from 'nodemailer'
 
 const router = express.Router()
 const DB_FILE = path.join(__dirname, '../db/subscribers.json')
@@ -61,8 +63,8 @@ Powered by KISAN-VISION 🛰️`
     const results: string[] = []
 
     if (phone) {
-      const twilio = require('twilio')(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN)
-      await twilio.messages.create({
+      const twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN)
+      await twilioClient.messages.create({
         from: process.env.TWILIO_WHATSAPP_FROM,
         to: `whatsapp:${phone}`,
         body: message
@@ -71,7 +73,6 @@ Powered by KISAN-VISION 🛰️`
     }
 
     if (email) {
-      const nodemailer = require('nodemailer')
       const transporter = nodemailer.createTransport({
         service: 'gmail',
         auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD }

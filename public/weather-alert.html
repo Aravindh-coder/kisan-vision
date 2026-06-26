@@ -76,7 +76,7 @@ input::placeholder { color:#4b5563; }
       <button class="loc-btn" onclick="detectLocation()">📡 Use My Current Location</button>
       <button class="loc-btn" style="margin-top:6px" onclick="toggleMap()">🗺️ Pick on Map</button>
       <div class="map-box" id="map-box">
-        <iframe id="map-iframe" width="100%" height="200" frameborder="0" style="border:0" allowfullscreen src=""></iframe>
+        <div id="map-iframe" width="100%" height="200" frameborder="0" style="border:0" allowfullscreen src=""></div>
       </div>
     </div>
 
@@ -175,14 +175,42 @@ function detectLocation() {
   });
 }
 
+var leafletMap = null, leafletMarker = null;
 function toggleMap() {
   mapShowing = !mapShowing;
   var box = document.getElementById('map-box');
   if (mapShowing) {
     box.style.display = 'block';
-    var cl = (lat && lon) ? lat + ',' + lon : '20.5937,78.9629';
-    document.getElementById('map-iframe').src = 'https://www.openstreetmap.org/export/embed.html?bbox=' + (lon-0.05) + '%2C' + (lat-0.05) + '%2C' + (lon+0.05) + '%2C' + (lat+0.05) + '&layer=mapnik&marker=' + cl;
-    alert('Tip: To pick a location, use GPS detection above or enter coordinates manually. Map is for preview only.');
+    if (!leafletMap) {
+      var startLat = (lat && lon) ? lat : 20.5937;
+      var startLon = (lat && lon) ? lon : 78.9629;
+      leafletMap = L.map('map-iframe').setView([startLat, startLon], lat ? 13 : 5);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution:'© OpenStreetMap'}).addTo(leafletMap);
+      if (lat && lon) {
+        leafletMarker = L.marker([lat, lon]).addTo(leafletMap).bindPopup('Your location').openPopup();
+      }
+      leafletMap.on('click', function(e) {
+        var clat = e.latlng.lat, clon = e.latlng.lng;
+        if (leafletMarker) leafletMap.removeLayer(leafletMarker);
+        leafletMarker = L.marker([clat, clon]).addTo(leafletMap).bindPopup('Selected!').openPopup();
+        fetch('https://nominatim.openstreetmap.org/reverse?lat='+clat+'&lon='+clon+'&format=json')
+          .then(function(r){return r.json();})
+          .then(function(d){
+            var name = (d.address && (d.address.suburb || d.address.city || d.address.town || d.address.village || d.address.county)) || (clat.toFixed(4)+'N, '+clon.toFixed(4)+'E');
+            lat = clat; lon = clon;
+            document.getElementById('loc-name').textContent = name;
+            document.getElementById('loc-coords').textContent = clat.toFixed(4)+'N · '+clon.toFixed(4)+'E';
+            setTimeout(function(){ box.style.display='none'; mapShowing=false; }, 800);
+          }).catch(function(){
+            lat = clat; lon = clon;
+            document.getElementById('loc-name').textContent = clat.toFixed(4)+'N, '+clon.toFixed(4)+'E';
+            document.getElementById('loc-coords').textContent = 'Custom location';
+            setTimeout(function(){ box.style.display='none'; mapShowing=false; }, 800);
+          });
+      });
+    } else {
+      setTimeout(function(){ leafletMap.invalidateSize(); }, 100);
+    }
   } else {
     box.style.display = 'none';
   }
