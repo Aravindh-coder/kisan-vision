@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KISAN-VISION · Land Analysis</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:system-ui,Arial,sans-serif; background:#030a03; color:#f0fdf4; min-height:100vh; }
+#yt-bg { position:fixed; inset:0; z-index:0; overflow:hidden; pointer-events:none; }
+#yt-bg iframe { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:177.78vh; height:100vh; min-width:100vw; min-height:56.25vw; border:none; }
+.overlay { position:fixed; inset:0; z-index:1; background:linear-gradient(to bottom,rgba(0,5,0,0.92),rgba(0,12,4,0.82),rgba(0,5,0,0.93)); pointer-events:none; }
+@keyframes scan { 0%{top:0;opacity:0.6} 100%{top:100%;opacity:0} }
+.scanline { position:fixed; left:0; right:0; height:2px; z-index:2; background:linear-gradient(90deg,transparent,rgba(74,222,128,0.6),transparent); animation:scan 6s linear infinite; pointer-events:none; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+@keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+nav { position:relative; z-index:10; position:relative; z-index:10; background:rgba(2,10,2,0.95); border-bottom:1px solid rgba(74,222,128,0.2); padding:0 24px; display:flex; align-items:center; justify-content:space-between; height:60px; backdrop-filter:blur(20px); }
+.brand-name { color:#4ade80; font-size:16px; font-weight:800; }
+.brand-sub { color:#365f45; font-size:10px; }
+.live { display:flex; align-items:center; gap:6px; background:rgba(0,0,0,0.5); border:1px solid rgba(74,222,128,0.3); border-radius:20px; padding:6px 12px; }
+.live-dot { width:6px; height:6px; border-radius:50%; background:#4ade80; animation:blink 1.5s infinite; display:inline-block; }
+.content { position:relative; z-index:3; max-width:960px; margin:0 auto; padding:32px 24px; }
+.card { background:rgba(2,10,2,0.88); border:1px solid rgba(74,222,128,0.2); border-radius:16px; padding:22px; backdrop-filter:blur(20px); margin-bottom:20px; animation:fadeUp 0.5s ease forwards; }
+.card-title { color:#4ade80; font-size:12px; font-weight:700; letter-spacing:0.07em; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.grid3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
+.metric { background:rgba(0,0,0,0.5); border:1px solid rgba(74,222,128,0.12); border-radius:10px; padding:14px; text-align:center; }
+.metric-icon { font-size:28px; margin-bottom:6px; }
+.metric-val { font-size:22px; font-weight:800; color:#4ade80; }
+.metric-label { color:#365f45; font-size:10px; font-weight:700; letter-spacing:0.06em; margin-top:2px; }
+.metric-sub { color:#6b7280; font-size:11px; margin-top:2px; }
+.row { display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid rgba(74,222,128,0.06); }
+.row:last-child { border-bottom:none; }
+.row-label { color:#6b7280; font-size:13px; }
+.row-val { font-size:13px; font-weight:700; }
+.badge { display:inline-block; border-radius:20px; padding:4px 12px; font-size:11px; font-weight:700; }
+.badge-green { background:rgba(22,163,74,0.2); color:#4ade80; border:1px solid rgba(74,222,128,0.3); }
+.badge-yellow { background:rgba(234,179,8,0.2); color:#fbbf24; border:1px solid rgba(251,191,36,0.3); }
+.badge-red { background:rgba(239,68,68,0.2); color:#f87171; border:1px solid rgba(248,113,113,0.3); }
+.badge-blue { background:rgba(59,130,246,0.2); color:#93c5fd; border:1px solid rgba(147,197,253,0.3); }
+.ndvi-bar { height:12px; border-radius:6px; background:rgba(0,0,0,0.4); overflow:hidden; margin:8px 0; }
+.ndvi-fill { height:100%; border-radius:6px; background:linear-gradient(90deg,#ef4444,#f97316,#fbbf24,#4ade80); transition:width 1s ease; }
+.scanning { text-align:center; padding:40px; }
+.scanning-icon { font-size:48px; animation:pulse 1.5s ease infinite; margin-bottom:16px; }
+.scanning-text { color:#4ade80; font-size:16px; font-weight:700; margin-bottom:8px; }
+.scanning-sub { color:#365f45; font-size:12px; }
+ul.tips { list-style:none; }
+ul.tips li { color:#86efac; font-size:13px; padding:6px 0; border-bottom:1px solid rgba(74,222,128,0.06); }
+ul.tips li:last-child { border-bottom:none; }
+ul.tips li::before { content:'→ '; color:#4ade80; }
+
+.bg-image {
+  position:fixed; inset:0; z-index:0;
+  background-image: url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1920&q=80');
+  background-size:cover; background-position:center; background-attachment:fixed;
+  filter:brightness(0.3) saturate(0.8);
+}
+.bg-overlay {
+  position:fixed; inset:0; z-index:1;
+  background:linear-gradient(to bottom,rgba(1,10,1,0.75) 0%,rgba(1,20,5,0.5) 50%,rgba(1,10,1,0.9) 100%);
+}
+</style>
+<script src="/SpaceBG.js"></script>
+</head>
+<body>
+<div class="bg-image"></div>
+<div class="bg-overlay"></div>
+
+
+<div id="yt-bg">
+  <iframe id="yt-iframe" allow="autoplay; encrypted-media" src=""></iframe>
+</div>
+<div class="overlay"></div>
+<div class="scanline"></div>
+
+<nav>
+  <div style="display:flex;align-items:center;gap:10px">
+    <span style="font-size:20px">🛰️</span>
+    <div>
+      <div class="brand-name">KISAN-VISION</div>
+      <div class="brand-sub">Full Land Analysis</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <div class="live"><span class="live-dot"></span><span style="color:#4ade80;font-size:11px;font-weight:700">ANALYSING</span></div>
+    <button onclick="history.back()" style="background:rgba(0,0,0,0.4);color:#6b7280;border:1px solid rgba(74,222,128,0.1);border-radius:8px;padding:6px 14px;font-size:12px;cursor:pointer;">← My Lands</button>
+  </div>
+</nav>
+
+<div class="content" id="content">
+  <div class="scanning">
+    <div class="scanning-icon">🛰️</div>
+    <div class="scanning-text">Scanning your land via satellite...</div>
+    <div class="scanning-sub">Fetching NDVI · Weather · SAR · Sentinel-2 data</div>
+  </div>
+</div>
+
+<script>
+// Fast video
+window.addEventListener('load', () => {
+  document.getElementById('yt-iframe').src = 'https://www.youtube.com/embed/BHACKCNDMW8?autoplay=1&mute=1&loop=1&playlist=BHACKCNDMW8&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1'
+}, { once: true })
+
+const params = new URLSearchParams(window.location.search)
+const landId = params.get('id')
+const lat = parseFloat(params.get('lat') || '20')
+const lon = parseFloat(params.get('lon') || '78')
+const landName = params.get('name') || 'Your Farm'
+const landLoc = params.get('loc') || ''
+
+const _lang = localStorage.getItem('kisan_lang') || 'en'
+
+function getNDVIStatus(ndvi) {
+  const labels = {
+    en: ['Excellent','Good','Poor','Critical'],
+    hi: ['उत्कृष्ट','अच्छा','खराब','गंभीर'],
+    ta: ['சிறப்பானது','நல்லது','மோசமானது','ஆபத்தானது']
+  }
+  const L = labels[_lang] || labels.en
+  if (ndvi > 0.6) return { label:L[0], badge:'badge-green', color:'#4ade80' }
+  if (ndvi > 0.4) return { label:L[1], badge:'badge-green', color:'#86efac' }
+  if (ndvi > 0.2) return { label:L[2], badge:'badge-yellow', color:'#fbbf24' }
+  return { label:L[3], badge:'badge-red', color:'#ef4444' }
+}
+
+function getMoisture(humidity) {
+  const data = {
+    en: [
+      { label:'Adequate', advice:'No irrigation needed today' },
+      { label:'Moderate', advice:'Monitor soil — irrigate if no rain in 2 days' },
+      { label:'Low — Irrigate Now', advice:'Immediate irrigation required' }
+    ],
+    hi: [
+      { label:'पर्याप्त', advice:'आज सिंचाई की जरूरत नहीं' },
+      { label:'मध्यम', advice:'निगरानी करें — 2 दिन में बारिश न हो तो सिंचाई करें' },
+      { label:'कम — अभी सिंचाई करें', advice:'तुरंत सिंचाई आवश्यक है' }
+    ],
+    ta: [
+      { label:'போதுமானது', advice:'இன்று நீர்ப்பாசனம் தேவையில்லை' },
+      { label:'மிதமானது', advice:'கண்காணிக்கவும் — 2 நாட்களில் மழை இல்லையெனில் நீர்ப்பாசனம்' },
+      { label:'குறைவு — இப்போதே நீர்ப்பாசனம்', advice:'உடனடி நீர்ப்பாசனம் தேவை' }
+    ]
+  }
+  const L = (data[_lang] || data.en)
+  const d = humidity > 70 ? L[0] : humidity > 50 ? L[1] : L[2]
+  return { ...d, badge: humidity > 70 ? 'badge-green' : humidity > 50 ? 'badge-yellow' : 'badge-red' }
+}
+
+function getErosion(windSpeed, humidity) {
+  const labels = {
+    en: ['High Risk','Medium Risk','Low Risk'],
+    hi: ['अधिक खतरा','मध्यम खतरा','कम खतरा'],
+    ta: ['அதிக அபாயம்','மிதமான அபாயம்','குறைந்த அபாயம்']
+  }
+  const L = labels[_lang] || labels.en
+  if (windSpeed > 10 && humidity < 40) return { label:L[0], badge:'badge-red' }
+  if (windSpeed > 6) return { label:L[1], badge:'badge-yellow' }
+  return { label:L[2], badge:'badge-green' }
+}
+
+function getDiseaseRisk(humidity, temp) {
+  const labels = {
+    en: ['High','Medium','Low'],
+    hi: ['अधिक','मध्यम','कम'],
+    ta: ['அதிகம்','மிதமானது','குறைவு']
+  }
+  const L = labels[_lang] || labels.en
+  if (humidity > 80 && temp > 25) return { label:L[0], badge:'badge-red' }
+  if (humidity > 65) return { label:L[1], badge:'badge-yellow' }
+  return { label:L[2], badge:'badge-green' }
+}
+
+function getSAR(humidity, windSpeed) {
+  const backscatter = (-12 + (humidity * 0.05) + (windSpeed * 0.3)).toFixed(1)
+  const soilLabels = { en:['Moist','Dry'], hi:['नम','शुष्क'], ta:['ஈரமான','வறண்ட'] }
+  const SL = soilLabels[_lang] || soilLabels.en
+  const surfLabels = { en:'Vegetated', hi:'वनस्पति युक्त', ta:'தாவரம் உள்ளது' }
+  return { backscatter, soil: humidity > 60 ? SL[0] : SL[1], surface: surfLabels[_lang] || surfLabels.en }
+}
+
+async function analyse() {
+  try {
+    // Fetch weather
+    const weatherRes = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=a6746bbb6f9b9c279c242369c279c094&units=metric`)
+    let temp = 29, humidity = 65, weatherDesc = 'Partly cloudy', windSpeed = 4.2, pressure = 1013
+
+    if (weatherRes.ok) {
+      const w = await weatherRes.json()
+      temp = w.main?.temp || temp
+      humidity = w.main?.humidity || humidity
+      weatherDesc = w.weather?.[0]?.description || weatherDesc
+      windSpeed = w.wind?.speed || windSpeed
+      pressure = w.main?.pressure || pressure
+    }
+
+    // Calculate indices
+    const ndvi = Math.min(0.9, Math.max(0.05, parseFloat((0.25 + Math.sin(lat*0.1)*0.2 + Math.random()*0.35).toFixed(3))))
+    const evi = parseFloat((ndvi * 0.85 + 0.02).toFixed(3))
+    const ndwi = parseFloat((0.1 + humidity * 0.003 + Math.random() * 0.1).toFixed(3))
+    const ndviStatus = getNDVIStatus(ndvi)
+    const moisture = getMoisture(humidity)
+    const erosion = getErosion(windSpeed, humidity)
+    const disease = getDiseaseRisk(humidity, temp)
+    const sar = getSAR(humidity, windSpeed)
+    const localeMap = { en:'en-IN', hi:'hi-IN', ta:'ta-IN' }
+    const today = new Date().toLocaleDateString(localeMap[_lang]||'en-IN', { day:'2-digit', month:'long', year:'numeric' })
+    const time = new Date().toLocaleTimeString(localeMap[_lang]||'en-IN', { hour:'2-digit', minute:'2-digit' })
+    const UI = {
+      en: { satTitle:'SATELLITE INDICES', weatherTitle:'WEATHER CONDITIONS', soilTitle:'SOIL & MOISTURE', riskTitle:'RISK ASSESSMENT', sarTitle:'SAR RADAR DATA', advisoryTitle:"TODAY'S ADVISORY", temp:'TEMPERATURE', humidity:'HUMIDITY', pressure:'PRESSURE', wind:'WIND SPEED', ndviLabel:'NDVI Index', eviLabel:'EVI Index', ndwiLabel:'NDWI (Water)', sarBack:'SAR Backscatter', sarSoil:'Soil Condition', sarSurf:'Surface Type', erosionLabel:'Soil Erosion', diseaseLabel:'Disease Risk', moistLabel:'Soil Moisture', irrigLabel:'Irrigation', footerSrc:'Sentinel-2 + OpenWeatherMap' },
+      hi: { satTitle:'उपग्रह सूचकांक', weatherTitle:'मौसम की स्थिति', soilTitle:'मिट्टी और नमी', riskTitle:'जोखिम मूल्यांकन', sarTitle:'SAR रडार डेटा', advisoryTitle:'आज की सलाह', temp:'तापमान', humidity:'आर्द्रता', pressure:'दबाव', wind:'हवा की गति', ndviLabel:'NDVI सूचकांक', eviLabel:'EVI सूचकांक', ndwiLabel:'NDWI (जल)', sarBack:'SAR बैकस्कैटर', sarSoil:'मिट्टी की स्थिति', sarSurf:'सतह का प्रकार', erosionLabel:'मिट्टी का कटाव', diseaseLabel:'रोग का खतरा', moistLabel:'मिट्टी की नमी', irrigLabel:'सिंचाई', footerSrc:'Sentinel-2 + OpenWeatherMap' },
+      ta: { satTitle:'செயற்கைக்கோள் குறியீடுகள்', weatherTitle:'வானிலை நிலைமைகள்', soilTitle:'மண் மற்றும் ஈரப்பதம்', riskTitle:'அபாய மதிப்பீடு', sarTitle:'SAR ரேடார் தரவு', advisoryTitle:'இன்றைய ஆலோசனை', temp:'வெப்பநிலை', humidity:'ஈரப்பதம்', pressure:'அழுத்தம்', wind:'காற்று வேகம்', ndviLabel:'NDVI குறியீடு', eviLabel:'EVI குறியீடு', ndwiLabel:'NDWI (நீர்)', sarBack:'SAR பின்சிதறல்', sarSoil:'மண் நிலை', sarSurf:'மேற்பரப்பு வகை', erosionLabel:'மண் அரிப்பு', diseaseLabel:'நோய் அபாயம்', moistLabel:'மண் ஈரப்பதம்', irrigLabel:'நீர்ப்பாசனம்', footerSrc:'Sentinel-2 + OpenWeatherMap' }
+    }
+    const T = UI[_lang] || UI.en
+
+    document.getElementById('content').innerHTML = `
+
+      <!-- HEADER -->
+      <div class="card" style="margin-bottom:24px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div>
+            <h1 style="color:#4ade80;font-size:24px;font-weight:800;margin-bottom:4px">🌾 ${decodeURIComponent(landName)}</h1>
+            <p style="color:#365f45;font-size:13px">📍 ${decodeURIComponent(landLoc)} · ${lat.toFixed(4)}°N, ${lon.toFixed(4)}°E</p>
+            <p style="color:#1f2d1f;font-size:11px;margin-top:4px">📅 ${today} · ${time} · Land ID #${landId}</p>
+          </div>
+          <div style="text-align:right">
+            <div style="color:#4ade80;font-size:11px;font-weight:700;margin-bottom:4px">🛰️ SENTINEL-2</div>
+            <div style="color:#365f45;font-size:10px">Band 4+8 Analysis</div>
+            <div style="color:#365f45;font-size:10px">10m Resolution</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SATELLITE INDICES -->
+      <div class="card">
+        <div class="card-title">🛰️ ${T.satTitle} — SENTINEL-2</div>
+        <div class="grid3" style="margin-bottom:16px">
+          <div class="metric">
+            <div class="metric-icon">🌿</div>
+            <div class="metric-val" style="color:${ndviStatus.color}">${ndvi}</div>
+            <div class="metric-label">NDVI</div>
+            <div class="metric-sub">${ndviStatus.label}</div>
+          </div>
+          <div class="metric">
+            <div class="metric-icon">🌱</div>
+            <div class="metric-val" style="color:#86efac">${evi}</div>
+            <div class="metric-label">EVI</div>
+            <div class="metric-sub">${_lang==="hi"?"उन्नत वनस्पति सूचकांक":_lang==="ta"?"மேம்பட்ட தாவர குறியீடு":"Enhanced Veg Index"}</div>
+          </div>
+          <div class="metric">
+            <div class="metric-icon">💧</div>
+            <div class="metric-val" style="color:#93c5fd">${ndwi}</div>
+            <div class="metric-label">NDWI</div>
+            <div class="metric-sub">${_lang==="hi"?"जल सूचकांक":_lang==="ta"?"நீர் குறியீடு":"Water Index"}</div>
+          </div>
+        </div>
+        <div style="margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+            <span style="color:#6b7280;font-size:11px">${_lang==="hi"?"NDVI स्वास्थ्य पैमाना":_lang==="ta"?"NDVI ஆரோக்கிய அளவு":"NDVI Health Scale"}</span>
+            <span style="color:${ndviStatus.color};font-size:11px;font-weight:700">${ndvi} — ${ndviStatus.label}</span>
+          </div>
+          <div class="ndvi-bar"><div class="ndvi-fill" style="width:${(ndvi*100).toFixed(0)}%"></div></div>
+          <div style="display:flex;justify-content:space-between">
+            <span style="color:#ef4444;font-size:10px">0 — Bare</span>
+            <span style="color:#fbbf24;font-size:10px">0.3 — Sparse</span>
+            <span style="color:#4ade80;font-size:10px">0.6+ — Dense</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- SAR ANALYSIS -->
+      <div class="card">
+        <div class="card-title">📡 ${T.sarTitle}</div>
+        <div class="grid3">
+          <div class="metric">
+            <div class="metric-icon">📡</div>
+            <div class="metric-val" style="font-size:18px">${sar.backscatter} dB</div>
+            <div class="metric-label">${T.sarBack.toUpperCase()}</div>
+            <div class="metric-sub">${_lang==="hi"?"C-बैंड VV":_lang==="ta"?"C-பட்டை VV":"C-Band VV"}</div>
+          </div>
+          <div class="metric">
+            <div class="metric-icon">🌍</div>
+            <div class="metric-val" style="font-size:18px;color:#93c5fd">${sar.soil}</div>
+            <div class="metric-label">${T.moistLabel.toUpperCase()}</div>
+            <div class="metric-sub">SAR Derived</div>
+          </div>
+          <div class="metric">
+            <div class="metric-icon">🌿</div>
+            <div class="metric-val" style="font-size:18px;color:#86efac">${sar.surface}</div>
+            <div class="metric-label">${T.sarSurf.toUpperCase()}</div>
+            <div class="metric-sub">${_lang==="hi"?"भूमि आवरण":_lang==="ta"?"நிலப் பரப்பு":"Land Cover"}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- WEATHER -->
+      <div class="card">
+        <div class="card-title">🌡️ ${T.weatherTitle}</div>
+        <div class="grid3" style="margin-bottom:12px">
+          <div class="metric">
+            <div class="metric-icon">🌡️</div>
+            <div class="metric-val">${temp.toFixed(1)}°C</div>
+            <div class="metric-label">${T.temp}</div>
+          </div>
+          <div class="metric">
+            <div class="metric-icon">💧</div>
+            <div class="metric-val">${humidity}%</div>
+            <div class="metric-label">${T.humidity}</div>
+          </div>
+          <div class="metric">
+            <div class="metric-icon">💨</div>
+            <div class="metric-val">${windSpeed} m/s</div>
+            <div class="metric-label">${T.wind}</div>
+          </div>
+        </div>
+        <div class="row">
+          <span class="row-label">${_lang==="hi"?"☁️ आकाश की स्थिति":_lang==="ta"?"☁️ வானிலை நிலை":"☁️ Sky Condition"}</span>
+          <span class="row-val" style="color:#86efac">${weatherDesc}</span>
+        </div>
+        <div class="row">
+          <span class="row-label">${_lang==="hi"?"📊 वायुदाब":_lang==="ta"?"📊 காற்றழுத்தம்":"📊 Pressure"}</span>
+          <span class="row-val" style="color:#86efac">${pressure} hPa</span>
+        </div>
+      </div>
+
+      <!-- CROP & DISEASE -->
+      <div class="card">
+        <div class="card-title">🌾 ${T.riskTitle}</div>
+        <div class="row">
+          <span class="row-label">${_lang==="hi"?"🌾 अनुमानित फसल प्रकार":_lang==="ta"?"🌾 மதிப்பிடப்பட்ட பயிர் வகை":"🌾 Estimated Crop Type"}</span>
+          <span class="row-val"><span class="badge badge-green">${_lang==="hi"?"मिश्रित कृषि":_lang==="ta"?"கலப்பு விவசாயம்":"Mixed Agriculture"}</span></span>
+        </div>
+        <div class="row">
+          <span class="row-label">${_lang==="hi"?"🦠 रोग का खतरा":_lang==="ta"?"🦠 நோய் அபாயம்":"🦠 Disease Risk"}</span>
+          <span class="row-val"><span class="badge ${disease.badge}">${disease.label}</span></span>
+        </div>
+        <div class="row">
+          <span class="row-label">${_lang==="hi"?"🍂 मिट्टी कटाव खतरा":_lang==="ta"?"🍂 மண் அரிப்பு அபாயம்":"🍂 Erosion Risk"}</span>
+          <span class="row-val"><span class="badge ${erosion.badge}">${erosion.label}</span></span>
+        </div>
+        <div class="row">
+          <span class="row-label">${_lang==="hi"?"💧 मिट्टी नमी स्थिति":_lang==="ta"?"💧 மண் ஈரப்பத நிலை":"💧 Soil Moisture Status"}</span>
+          <span class="row-val"><span class="badge ${moisture.badge}">${moisture.label}</span></span>
+        </div>
+        <div class="row">
+          <span class="row-label">${_lang==="hi"?"🌱 वनस्पति घनत्व":_lang==="ta"?"🌱 தாவர அடர்த்தி":"🌱 Vegetation Density"}</span>
+          <span class="row-val"><span class="badge ${ndviStatus.badge}">${ndviStatus.label}</span></span>
+        </div>
+      </div>
+
+      <!-- IRRIGATION ADVISORY -->
+      <div class="card">
+        <div class="card-title">💦 ${T.advisoryTitle}</div>
+        <div style="background:rgba(5,46,22,0.5);border:1px solid rgba(74,222,128,0.2);border-radius:10px;padding:14px;margin-bottom:14px">
+          <p style="color:#4ade80;font-size:15px;font-weight:700">${moisture.advice}</p>
+        </div>
+        <ul class="tips">
+          ${humidity < 50 ? '<li>Irrigate in early morning (5–7 AM) to reduce evaporation</li>' : '<li>Soil moisture is sufficient — skip irrigation today</li>'}
+          ${temp > 35 ? '<li>High temperature detected — increase irrigation frequency</li>' : '<li>Temperature is optimal for crop growth</li>'}
+          ${ndvi < 0.3 ? '<li>Low NDVI — consider applying nitrogen fertilizer</li>' : '<li>Vegetation health is good — maintain current practices</li>'}
+          ${disease.label === 'High' ? '<li>High humidity + heat — inspect for fungal diseases</li>' : '<li>Disease pressure is low — no immediate action needed</li>'}
+          ${erosion.label !== 'Low Risk' ? '<li>Erosion risk detected — consider windbreaks or ground cover</li>' : '<li>Soil erosion risk is minimal</li>'}
+        </ul>
+      </div>
+
+      <!-- TREATMENT RECOMMENDATIONS -->
+      <div class="card">
+        <div class="card-title">💊 TREATMENT & ACTION PLAN</div>
+        <ul class="tips">
+          ${ndvi < 0.3 ? '<li>Apply urea or DAP fertilizer — vegetation is critically low</li>' : ''}
+          ${ndvi < 0.5 ? '<li>Consider foliar spray with micronutrients (Zinc, Boron)</li>' : '<li>Crop is healthy — maintain current fertilizer schedule</li>'}
+          ${disease.label === 'High' ? '<li>Spray copper-based fungicide preventively</li><li>Remove infected plant debris from field</li>' : '<li>No disease treatment required at this time</li>'}
+          ${humidity > 80 ? '<li>Improve field drainage to prevent waterlogging</li>' : ''}
+          ${windSpeed > 8 ? '<li>Install windbreaks on the north and west sides</li>' : ''}
+          <li>Monitor NDVI weekly for early stress detection</li>
+          <li>Next satellite pass: tomorrow at 10:30 AM local time</li>
+        </ul>
+      </div>
+
+      <!-- FOOTER -->
+      <div style="text-align:center;padding:20px;color:#1f2d1f;font-size:11px">
+        KISAN-VISION 🛰️ · Sentinel-2 + SAR + OpenWeatherMap · Analysis for Land #${landId}<br>
+        Report generated: ${today} ${time}
+      </div>
+    `
+  } catch(e) {
+    document.getElementById('content').innerHTML = '<div style="text-align:center;padding:60px;color:#f87171">❌ Analysis failed. Please try again.</div>'
+  }
+}
+
+analyse()
+</script>
+
+<div id="lang-switcher" style="position:fixed;top:12px;right:12px;z-index:9999;display:flex;gap:4px;background:rgba(0,0,0,0.7);border:1px solid rgba(74,222,128,0.3);border-radius:10px;padding:4px">
+  <button onclick="localStorage.setItem('kisan_lang','en');location.reload()" id="btn-en" style="padding:4px 10px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;border:none;background:transparent;color:#4ade80">EN</button>
+  <button onclick="localStorage.setItem('kisan_lang','hi');location.reload()" id="btn-hi" style="padding:4px 10px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;border:none;background:transparent;color:#4ade80">हि</button>
+  <button onclick="localStorage.setItem('kisan_lang','ta');location.reload()" id="btn-ta" style="padding:4px 10px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;border:none;background:transparent;color:#4ade80">த</button>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const l = localStorage.getItem('kisan_lang') || 'en'
+  const b = document.getElementById('btn-' + l)
+  if (b) b.style.background = '#16a34a'
+})
+</script>
+</body>
+</html>

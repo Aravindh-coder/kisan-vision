@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KISAN AI</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:system-ui,Arial,sans-serif; background:#030a03; color:#f0fdf4; height:100vh; display:flex; flex-direction:column; }
+nav { position:relative; z-index:10; background:rgba(2,10,2,0.95); border-bottom:1px solid rgba(74,222,128,0.2); padding:0 24px; display:flex; align-items:center; justify-content:space-between; height:60px; flex-shrink:0; }
+.brand { color:#4ade80; font-size:15px; font-weight:800; }
+.farm-bar { background:rgba(22,101,52,0.15); border-bottom:1px solid rgba(74,222,128,0.15); padding:10px 24px; flex-shrink:0; position:relative; z-index:10; }
+.farm-bar-name { color:#4ade80; font-size:14px; font-weight:800; }
+.farm-bar-meta { color:#365f45; font-size:12px; margin-top:2px; }
+.chat-area { flex:1; overflow-y:auto; padding:20px 24px; display:flex; flex-direction:column; gap:14px; position:relative; z-index:10; }
+.msg { max-width:78%; padding:13px 17px; border-radius:16px; font-size:14px; line-height:1.75; white-space:pre-wrap; }
+.ai { background:rgba(22,101,52,0.2); border:1px solid rgba(74,222,128,0.2); color:#d1fae5; align-self:flex-start; border-bottom-left-radius:4px; }
+.user { background:rgba(59,130,246,0.2); border:1px solid rgba(59,130,246,0.2); color:#bfdbfe; align-self:flex-end; border-bottom-right-radius:4px; }
+.thinking { background:rgba(22,101,52,0.08); border:1px solid rgba(74,222,128,0.1); color:#365f45; align-self:flex-start; font-style:italic; }
+.input-row { background:rgba(2,10,2,0.95); border-top:1px solid rgba(74,222,128,0.2); padding:14px 24px; display:flex; gap:10px; flex-shrink:0; position:relative; z-index:10; }
+.chat-input { flex:1; background:rgba(0,0,0,0.5); border:1px solid rgba(74,222,128,0.2); border-radius:12px; padding:12px 16px; color:#f0fdf4; font-size:14px; outline:none; }
+.send-btn { background:#16a34a; color:#fff; border:none; border-radius:12px; padding:12px 22px; font-size:14px; font-weight:800; cursor:pointer; }
+.send-btn:disabled { opacity:0.4; cursor:wait; }
+
+.bg-image {
+  position:fixed; inset:0; z-index:0;
+  background-image: url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1920&q=80');
+  background-size:cover; background-position:center; background-attachment:fixed;
+  filter:brightness(0.3) saturate(0.8);
+}
+.bg-overlay {
+  position:fixed; inset:0; z-index:1;
+  background:linear-gradient(to bottom,rgba(1,10,1,0.75) 0%,rgba(1,20,5,0.5) 50%,rgba(1,10,1,0.9) 100%);
+}
+</style>
+</head>
+<body>
+<div class="bg-image"></div>
+<div class="bg-overlay"></div>
+
+<nav>
+  <div class="brand">KISAN AI - Farm Assistant</div>
+  <button onclick="window.location.href='/my-lands.html'" style="background:rgba(0,0,0,0.4);color:#6b7280;border:1px solid rgba(74,222,128,0.1);border-radius:8px;padding:8px 14px;font-size:12px;cursor:pointer;">Back</button>
+</nav>
+<div class="farm-bar" id="farmBar">
+  <div class="farm-bar-name">Loading...</div>
+</div>
+<div class="chat-area" id="chatArea"></div>
+<div class="input-row">
+  <input class="chat-input" id="chatInput" placeholder="Ask anything about your farm..." />
+  <button class="send-btn" id="sendBtn">Send</button>
+</div>
+<script>
+var GKEY = "GROQ_API_KEY_HERE";
+var farm = null;
+var sat = null;
+var hist = [];
+
+function addMsg(txt, cls) {
+  var d = document.createElement("div");
+  d.className = "msg " + cls;
+  d.textContent = txt;
+  document.getElementById("chatArea").appendChild(d);
+  d.scrollIntoView({behavior:"smooth"});
+  return d;
+}
+
+function sysPrompt() {
+  var s = "You are KISAN AI, a friendly expert Indian agricultural scientist. ";
+  s += "Give warm, practical, specific advice for Indian farming with product names and quantities. ";
+  s += "Ask only ONE follow-up question at a time. Keep replies concise and helpful.";
+  if (farm) {
+    s += " Farm name: " + farm.name + ".";
+    s += " Location: " + farm.location + ".";
+    s += " Current crop: " + (farm.crop || "not specified") + ".";
+    s += " Farmer: " + farm.farmer + ".";
+  }
+  if (sat && sat.ndvi) {
+    s += " Satellite data: NDVI=" + parseFloat(sat.ndvi).toFixed(3);
+    s += " NDWI=" + parseFloat(sat.ndwi||0).toFixed(3);
+    if (sat.weather) {
+      s += " Temp=" + sat.weather.temp + "C";
+      s += " Humidity=" + sat.weather.humidity + "%";
+      s += " Weather=" + sat.weather.description + ".";
+    }
+    if (sat.advisory) {
+      s += " Advisory=" + sat.advisory.status + ".";
+    }
+  }
+  return s;
+}
+
+function doSend() {
+  var inp = document.getElementById("chatInput");
+  var btn = document.getElementById("sendBtn");
+  var msg = inp.value.trim();
+  if (!msg || btn.disabled) return;
+  inp.value = "";
+  btn.disabled = true;
+  addMsg(msg, "user");
+  var think = addMsg("KISAN AI is thinking...", "thinking");
+  hist.push({role:"user", content:msg});
+  var msgs = [{role:"system", content:sysPrompt()}].concat(hist);
+  fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {"Content-Type":"application/json", "Authorization":"Bearer " + GKEY},
+    body: JSON.stringify({model:"llama-3.3-70b-versatile", messages:msgs, max_tokens:600, temperature:0.7})
+  }).then(function(r) { return r.json(); }).then(function(d) {
+    think.remove();
+    if (d.error) { addMsg("Error: " + d.error.message, "ai"); btn.disabled=false; return; }
+    var reply = d.choices[0].message.content;
+    hist.push({role:"assistant", content:reply});
+    addMsg(reply, "ai");
+    btn.disabled = false;
+  }).catch(function(e) {
+    think.remove();
+    addMsg("Connection error: " + e.message, "ai");
+    btn.disabled = false;
+  });
+}
+
+document.getElementById("sendBtn").onclick = doSend;
+document.getElementById("chatInput").addEventListener("keydown", function(e) {
+  if (e.key === "Enter") doSend();
+});
+
+function start() {
+  var fp = new URLSearchParams(window.location.search).get("farm");
+  if (fp) {
+    try { farm = JSON.parse(decodeURIComponent(fp)); } catch(e) { farm = null; }
+  }
+  if (!farm) {
+    addMsg("No farm selected. Go back to My Lands and click Connect with KISAN AI.", "ai");
+    return;
+  }
+  document.getElementById("farmBar").innerHTML =
+    "<div class='farm-bar-name'>" + farm.name + " (ID #" + farm.id + ")</div>" +
+    "<div class='farm-bar-meta'>Location: " + (farm.location||"N/A") + " | Crop: " + (farm.crop||"Not specified") + " | Farmer: " + (farm.farmer||"") + "</div>";
+
+  var token = localStorage.getItem("token") || "";
+  fetch("http://localhost:3001/api/satellite?lat=" + farm.lat + "&lon=" + farm.lon, {
+    headers: {"Authorization":"Bearer " + token}
+  }).then(function(r) { return r.json(); }).then(function(d) {
+    sat = d;
+  }).catch(function() {
+    sat = null;
+  }).then(function() {
+    var g = "Namaste " + (farm.farmer||"farmer") + "! I am KISAN AI, your personal farm assistant.\n\n";
+    g += "Farm: " + farm.name + "\n";
+    g += "Location: " + (farm.location||"N/A") + "\n";
+    g += "Current crop: " + (farm.crop||"Not specified") + "\n";
+    if (sat && sat.ndvi) {
+      g += "\nLive satellite readings:\n";
+      g += "- Vegetation (NDVI): " + parseFloat(sat.ndvi).toFixed(3) + (parseFloat(sat.ndvi)>0.4?" (Healthy)":" (Needs attention)") + "\n";
+      g += "- Soil moisture (NDWI): " + parseFloat(sat.ndwi||0).toFixed(3) + "\n";
+      g += "- Temperature: " + ((sat.weather&&sat.weather.temp)||"N/A") + " C\n";
+      g += "- Humidity: " + ((sat.weather&&sat.weather.humidity)||"N/A") + "%\n";
+      g += "- Advisory: " + ((sat.advisory&&sat.advisory.status)||"N/A") + "\n";
+    }
+    g += "\nWhat is your main concern today - soil, crops, irrigation, pests, or harvest?";
+    hist.push({role:"assistant", content:g});
+    addMsg(g, "ai");
+  });
+}
+
+start();
+</script>
+</body>
+</html>

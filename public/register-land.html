@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KISAN-VISION · Register Your Land</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:system-ui,Arial,sans-serif; background:#030a03; color:#f0fdf4; height:100vh; display:flex; flex-direction:column; overflow:hidden; }
+#topbar { background:rgba(2,10,2,0.97); border-bottom:1px solid rgba(74,222,128,0.2); padding:0 20px; display:flex; align-items:center; justify-content:space-between; z-index:1000; flex-shrink:0; height:56px; gap:16px; }
+.brand { display:flex; align-items:center; gap:10px; flex-shrink:0; }
+.brand-name { color:#4ade80; font-size:15px; font-weight:800; }
+.brand-sub { color:#365f45; font-size:10px; }
+#search-wrap { flex:1; max-width:500px; position:relative; }
+#location-search { width:100%; background:rgba(0,0,0,0.6); color:#f0fdf4; border:1px solid rgba(74,222,128,0.3); border-radius:8px; padding:8px 14px 8px 36px; font-size:13px; outline:none; transition:border 0.2s; }
+#location-search:focus { border-color:#4ade80; background:rgba(0,0,0,0.8); }
+#location-search::placeholder { color:#374151; }
+.search-icon { position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#4ade80; font-size:14px; pointer-events:none; }
+#suggestions { position:absolute; top:calc(100% + 4px); left:0; right:0; background:rgba(2,15,2,0.98); border:1px solid rgba(74,222,128,0.2); border-radius:8px; z-index:9999; max-height:200px; overflow-y:auto; display:none; }
+.suggestion { padding:10px 14px; cursor:pointer; font-size:12px; color:#d1fae5; border-bottom:1px solid rgba(74,222,128,0.05); }
+.suggestion:hover { background:rgba(74,222,128,0.1); color:#4ade80; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+.live { display:flex; align-items:center; gap:6px; background:rgba(0,0,0,0.5); border:1px solid rgba(74,222,128,0.3); border-radius:20px; padding:6px 12px; flex-shrink:0; }
+.live-dot { width:6px; height:6px; border-radius:50%; background:#4ade80; animation:blink 1.5s infinite; }
+.live-text { color:#4ade80; font-size:11px; font-weight:700; }
+#content { display:flex; flex:1; overflow:hidden; }
+#map { flex:1; height:100%; }
+#sidebar { width:300px; flex-shrink:0; background:rgba(2,10,2,0.97); border-left:1px solid rgba(74,222,128,0.2); overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:12px; }
+.card { background:rgba(22,101,52,0.1); border:1px solid rgba(74,222,128,0.15); border-radius:10px; padding:14px; }
+.card-title { color:#4ade80; font-size:11px; font-weight:700; letter-spacing:0.06em; margin-bottom:8px; }
+.card-desc { color:#4b5563; font-size:12px; line-height:1.5; }
+.inp { width:100%; background:rgba(0,0,0,0.5); color:#f0fdf4; border:1px solid rgba(74,222,128,0.2); border-radius:8px; padding:10px 12px; font-size:14px; outline:none; margin-top:6px; transition:border 0.2s; }
+.inp:focus { border-color:#4ade80; }
+.inp::placeholder { color:#374151; }
+.inp[required] { border-left:2px solid rgba(74,222,128,0.4); }
+#area-box { background:rgba(0,0,0,0.4); border:1px solid rgba(74,222,128,0.2); border-radius:8px; padding:10px 12px; color:#4ade80; font-size:13px; font-weight:700; min-height:38px; display:flex; align-items:center; }
+#register-btn { width:100%; background:#16a34a; color:#fff; border:none; border-radius:10px; padding:14px; font-size:15px; font-weight:800; cursor:pointer; transition:all 0.2s; }
+#register-btn:hover:not(:disabled) { background:#15803d; transform:translateY(-1px); box-shadow:0 4px 15px rgba(22,163,74,0.3); }
+#register-btn:disabled { opacity:0.4; cursor:not-allowed; }
+#clear-btn { width:100%; background:rgba(239,68,68,0.1); color:#f87171; border:1px solid rgba(239,68,68,0.3); border-radius:8px; padding:10px; font-size:13px; font-weight:600; cursor:pointer; }
+#clear-btn:hover { background:rgba(239,68,68,0.2); }
+#success-box { display:none; flex-direction:column; align-items:center; background:rgba(5,46,22,0.95); border:2px solid #4ade80; border-radius:12px; padding:20px; text-align:center; gap:6px; }
+.hint { color:#374151; font-size:11px; text-align:center; }
+.loc-info { background:rgba(0,0,0,0.3); border:1px solid rgba(74,222,128,0.1); border-radius:8px; padding:8px 12px; }
+.loc-info-text { color:#6b7280; font-size:11px; }
+.loc-info-val { color:#86efac; font-size:12px; font-weight:600; margin-top:2px; }
+.step-num { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; background:#4ade80; color:#000; border-radius:50%; font-size:10px; font-weight:800; margin-right:6px; }
+@keyframes scan { 0%{top:56px;opacity:0.6} 100%{top:100%;opacity:0} }
+.scanline { position:fixed; left:0; right:300px; height:1px; z-index:500; background:linear-gradient(90deg,transparent,rgba(74,222,128,0.5),transparent); animation:scan 7s linear infinite; pointer-events:none; }
+
+.bg-image {
+  position:fixed; inset:0; z-index:0;
+  background-image: url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1920&q=80');
+  background-size:cover; background-position:center; background-attachment:fixed;
+  filter:brightness(0.3) saturate(0.8);
+}
+.bg-overlay {
+  position:fixed; inset:0; z-index:1;
+  background:linear-gradient(to bottom,rgba(1,10,1,0.75) 0%,rgba(1,20,5,0.5) 50%,rgba(1,10,1,0.9) 100%);
+}
+</style>
+<script src="/SpaceBG.js"></script>
+</head>
+<body>
+<div class="bg-image"></div>
+<div class="bg-overlay"></div>
+
+
+<div id="topbar">
+  <div class="brand">
+    <span style="font-size:20px">🛰️</span>
+    <div>
+      <div class="brand-name">KISAN-VISION</div>
+      <div class="brand-sub">Land Registration</div>
+    </div>
+  </div>
+
+  <div id="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input id="location-search" type="text" placeholder="Search country, state, district, village..."/>
+    <div id="suggestions"></div>
+  </div>
+
+  <div class="live">
+    <span class="live-dot"></span>
+    <span class="live-text">SATELLITE LIVE</span>
+  </div>
+</div>
+
+<div class="scanline"></div>
+
+<div id="content">
+  <div id="map"></div>
+  <div id="sidebar">
+
+    <div class="card">
+      <div class="card-title"><span class="step-num">1</span>SEARCH & NAVIGATE</div>
+      <div class="card-desc">Use the search bar above to find your village, district or state. The map will zoom to your location.</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="step-num">2</span>DRAW YOUR LAND</div>
+      <div class="card-desc">Click the <strong style="color:#4ade80">polygon tool ⬠</strong> on the map toolbar. Click each corner of your farm boundary. Double-click to finish.</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📐 LAND AREA</div>
+      <div id="area-box">Draw boundary to calculate</div>
+      <div id="loc-detected" style="margin-top:8px;display:none">
+        <div class="loc-info">
+          <div class="loc-info-text">Detected Location</div>
+          <div class="loc-info-val" id="loc-detected-text"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="step-num">3</span>YOUR DETAILS</div>
+      <input class="inp" id="farmer-name" placeholder="Full Name *" type="text" required/>
+      <input class="inp" id="farmer-phone" placeholder="WhatsApp Number (+91...) *" type="tel" required/>
+      <input class="inp" id="farmer-email" placeholder="Email Address * (for daily reports)" type="email" required/>
+      <input class="inp" id="land-name" placeholder="Farm / Land Name (optional)" type="text"/>
+      <input class="inp" id="crop-type" placeholder="Current Crop (e.g. Rice, Wheat)" type="text"/>
+    </div>
+
+    <div id="success-box">
+      <div style="font-size:44px">✅</div>
+      <div style="color:#4ade80;font-size:17px;font-weight:800">Land Registered!</div>
+      <div style="color:#86efac;font-size:12px;line-height:1.6">Confirmation sent to your email.<br>Daily NDVI, moisture & satellite analysis will arrive every morning at <strong style="color:#4ade80">6 AM</strong>.</div>
+      <div id="success-details" style="margin-top:8px;font-size:12px;color:#365f45"></div>
+    </div>
+
+    <button type="button" id="register-btn" onclick="registerLand()" disabled>
+      🌾 Register My Land
+    </button>
+    <div class="hint" id="hint-text">Draw your land boundary on the map first</div>
+    <button type="button" id="clear-btn" onclick="clearAll()">🗑️ Clear & Start Over</button>
+
+    <div style="background:rgba(0,0,0,0.3);border:1px solid #0f1f0f;border-radius:8px;padding:12px;">
+      <div style="color:#1f2d1f;font-size:10px;font-weight:700;letter-spacing:0.06em;margin-bottom:8px">DAILY REPORTS INCLUDE</div>
+      <div style="color:#374151;font-size:11px;line-height:1.8">
+        🌿 NDVI vegetation index<br>
+        💧 Soil moisture & stress<br>
+        🛰️ Sentinel-2 analysis<br>
+        🌡️ Weather & humidity<br>
+        💦 Irrigation advisory<br>
+        ⚠️ Disease risk alert
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+<script>
+// MAP SETUP
+const map = L.map('map').setView([20.5937, 78.9629], 5)
+
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+  attribution: 'Esri Satellite', maxZoom: 19
+}).addTo(map)
+
+// Add place name labels overlay
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  opacity: 0.3, maxZoom: 19
+}).addTo(map)
+
+const drawnItems = new L.FeatureGroup()
+map.addLayer(drawnItems)
+
+const drawControl = new L.Control.Draw({
+  edit: { featureGroup: drawnItems },
+  draw: {
+    polygon: {
+      allowIntersection: false,
+      showArea: true,
+      shapeOptions: { color:'#4ade80', fillColor:'#4ade80', fillOpacity:0.25, weight:2 }
+    },
+    polyline:false, rectangle:false, circle:false, marker:false, circlemarker:false
+  }
+})
+map.addControl(drawControl)
+
+let polygonCoords = null
+let detectedLocation = ''
+
+// LOCATION SEARCH
+let searchTimeout = null
+const searchInput = document.getElementById('location-search')
+const suggestionsBox = document.getElementById('suggestions')
+
+searchInput.addEventListener('input', function() {
+  clearTimeout(searchTimeout)
+  const q = this.value.trim()
+  if (q.length < 3) { suggestionsBox.style.display = 'none'; return }
+  searchTimeout = setTimeout(() => searchLocation(q), 400)
+})
+
+searchInput.addEventListener('blur', function() {
+  setTimeout(() => { suggestionsBox.style.display = 'none' }, 200)
+})
+
+async function searchLocation(q) {
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=6&countrycodes=in`)
+    const data = await res.json()
+    if (!data.length) { suggestionsBox.style.display = 'none'; return }
+    suggestionsBox.innerHTML = data.map(d => `
+      <div class="suggestion" onclick="goTo(${d.lat}, ${d.lon}, '${d.display_name.replace(/'/g,"\\'")}')">
+        📍 ${d.display_name}
+      </div>
+    `).join('')
+    suggestionsBox.style.display = 'block'
+  } catch(e) { suggestionsBox.style.display = 'none' }
+}
+
+function goTo(lat, lon, name) {
+  map.setView([parseFloat(lat), parseFloat(lon)], 14)
+  suggestionsBox.style.display = 'none'
+  searchInput.value = name.split(',').slice(0,3).join(',')
+}
+
+// AREA CALCULATION
+function calcArea(latlngs) {
+  let area = 0
+  const n = latlngs.length
+  const R = 6371000
+  for (let i = 0; i < n; i++) {
+    const j = (i+1) % n
+    area += (latlngs[j].lng - latlngs[i].lng) * Math.PI/180
+            * (2 + Math.sin(latlngs[i].lat*Math.PI/180) + Math.sin(latlngs[j].lat*Math.PI/180))
+  }
+  const m2 = Math.abs(area) * R * R / 2
+  return { acres: (m2/4046.86).toFixed(2), ha: (m2/10000).toFixed(2) }
+}
+
+// REVERSE GEOCODE
+async function reverseGeocode(lat, lon) {
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`)
+    const d = await res.json()
+    const a = d.address || {}
+    const parts = [a.village||a.suburb||a.town||a.city, a.county||a.district, a.state, a.country].filter(Boolean)
+    return parts.slice(0,3).join(', ')
+  } catch(e) { return '' }
+}
+
+map.on(L.Draw.Event.CREATED, async function(e) {
+  drawnItems.clearLayers()
+  drawnItems.addLayer(e.layer)
+  const latlngs = e.layer.getLatLngs()[0]
+  polygonCoords = latlngs.map(l => [l.lat, l.lng])
+  const { acres, ha } = calcArea(latlngs)
+  document.getElementById('area-box').textContent = acres + ' acres  (' + ha + ' ha)'
+
+  // Reverse geocode center
+  const cLat = polygonCoords.reduce((s,c)=>s+c[0],0)/polygonCoords.length
+  const cLon = polygonCoords.reduce((s,c)=>s+c[1],0)/polygonCoords.length
+  detectedLocation = await reverseGeocode(cLat, cLon)
+  if (detectedLocation) {
+    document.getElementById('loc-detected-text').textContent = detectedLocation
+    document.getElementById('loc-detected').style.display = 'block'
+  }
+
+  document.getElementById('register-btn').disabled = false
+  document.getElementById('hint-text').textContent = 'Fill your details and register'
+})
+
+map.on(L.Draw.Event.DELETED, function() {
+  polygonCoords = null
+  document.getElementById('area-box').textContent = 'Draw boundary to calculate'
+  document.getElementById('loc-detected').style.display = 'none'
+  document.getElementById('register-btn').disabled = true
+  document.getElementById('hint-text').textContent = 'Draw your land boundary on the map first'
+})
+
+function clearAll() {
+  drawnItems.clearLayers()
+  polygonCoords = null
+  detectedLocation = ''
+  document.getElementById('area-box').textContent = 'Draw boundary to calculate'
+  document.getElementById('loc-detected').style.display = 'none'
+  document.getElementById('register-btn').disabled = true
+  document.getElementById('register-btn').textContent = '🌾 Register My Land'
+  document.getElementById('register-btn').style.background = '#16a34a'
+  document.getElementById('success-box').style.display = 'none'
+  document.getElementById('hint-text').textContent = 'Draw your land boundary on the map first'
+  ;['farmer-name','farmer-phone','farmer-email','land-name','crop-type'].forEach(id => document.getElementById(id).value='')
+}
+
+async function registerLand() {
+  const name = document.getElementById('farmer-name').value.trim()
+  const phone = document.getElementById('farmer-phone').value.trim()
+  const email = document.getElementById('farmer-email').value.trim()
+  const landName = document.getElementById('land-name').value.trim()
+  const cropType = document.getElementById('crop-type').value.trim()
+
+  if (!name) { alert('Please enter your full name'); return }
+  if (!phone) { alert('Please enter your WhatsApp number'); return }
+  if (!email) { alert('Email is required for daily satellite reports'); return }
+  if (!polygonCoords) { alert('Please draw your land boundary first'); return }
+
+  const btn = document.getElementById('register-btn')
+  btn.disabled = true
+  btn.textContent = '📡 Registering...'
+
+  const centerLat = polygonCoords.reduce((s,c)=>s+c[0],0)/polygonCoords.length
+  const centerLon = polygonCoords.reduce((s,c)=>s+c[1],0)/polygonCoords.length
+
+  try {
+    const token = localStorage.getItem('token') || ''
+    const res = await fetch('http://localhost:3001/api/lands/register', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+token },
+      body: JSON.stringify({ name, phone, email, landName, cropType, polygonCoords, centerLat, centerLon, detectedLocation, lang: localStorage.getItem('kisan_lang') || 'en' })
+    })
+    const data = await res.json()
+    if (data.success) {
+      document.getElementById('success-box').style.display = 'flex'
+      document.getElementById('success-details').textContent = '📧 ' + email + '\n📍 ' + (detectedLocation || 'Your land')
+      btn.textContent = '✅ Registered!'
+        setTimeout(() => { window.location.href = '/my-lands.html?email=' + encodeURIComponent(email) }, 1500)
+        setTimeout(() => { window.location.href = '/my-lands.html?email=' + encodeURIComponent(email) }, 1500)
+      btn.style.background = '#065f46'
+      btn.disabled = false
+    } else {
+      alert(data.error || 'Registration failed')
+      btn.disabled = false
+      btn.textContent = '🌾 Register My Land'
+    }
+  } catch(e) {
+    alert('Connection error. Please try again.')
+    btn.disabled = false
+    btn.textContent = '🌾 Register My Land'
+  }
+}
+
+// Auto locate
+if (navigator.geolocation) {
+  navigator.geolocation.getCurrentPosition(p => map.setView([p.coords.latitude, p.coords.longitude], 13))
+}
+</script>
+
+<div id="lang-switcher" style="position:fixed;top:12px;right:12px;z-index:9999;display:flex;gap:4px;background:rgba(0,0,0,0.7);border:1px solid rgba(74,222,128,0.3);border-radius:10px;padding:4px">
+  <button onclick="setHtmlLang('en')" id="btn-en" style="padding:4px 10px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;border:none;background:transparent;color:#4ade80">EN</button>
+  <button onclick="setHtmlLang('hi')" id="btn-hi" style="padding:4px 10px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;border:none;background:transparent;color:#4ade80">हि</button>
+  <button onclick="setHtmlLang('ta')" id="btn-ta" style="padding:4px 10px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;border:none;background:transparent;color:#4ade80">த</button>
+</div>
+<script>
+function setHtmlLang(l) { localStorage.setItem('kisan_lang', l); applyLang(); }
+function applyLang() {
+  const htmlLang = localStorage.getItem('kisan_lang') || 'en'
+  const mapT = {
+    en: { name: 'Full Name *', phone: 'WhatsApp Number (+91...)', email: 'Email Address (for daily reports)', landName: 'Farm / Land Name (optional)', crop: 'Current Crop (e.g. Rice, Wheat)', register: '🌾 Register My Land' },
+    hi: { name: 'किसान का नाम *', phone: 'WhatsApp नंबर (+91...)', email: 'ईमेल पता (दैनिक रिपोर्ट के लिए)', landName: 'जमीन का नाम (वैकल्पिक)', crop: 'फसल प्रकार (जैसे धान, गेहूं)', register: '🌾 मेरी जमीन दर्ज करें' },
+    ta: { name: 'விவசாயி பெயர் *', phone: 'WhatsApp எண் (+91...)', email: 'மின்னஞ்சல் (தினசரி அறிக்கைக்கு)', landName: 'நில பெயர் (விருப்பம்)', crop: 'தற்போதைய பயிர் (எ.கா. நெல், கோதுமை)', register: '🌾 என் நிலத்தை பதிவு செய்' }
+  }
+  const mt = mapT[htmlLang] || mapT['en']
+  const fields = {
+    'farmer-name': mt.name, 'farmer-phone': mt.phone,
+    'farmer-email': mt.email, 'land-name': mt.landName, 'crop-type': mt.crop
+  }
+  Object.entries(fields).forEach(([id, ph]) => {
+    const el = document.getElementById(id)
+    if (el) el.placeholder = ph
+  })
+  const btn = document.getElementById('register-btn')
+  if (btn) btn.textContent = mt.register
+  // Highlight active
+  ['en','hi','ta'].forEach(l => {
+    const b = document.getElementById('btn-' + l)
+    if (b) b.style.background = l === htmlLang ? '#16a34a' : 'transparent'
+  })
+}
+document.addEventListener('DOMContentLoaded', applyLang)
+</script>
+</body>
+</html>

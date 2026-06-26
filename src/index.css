@@ -1,0 +1,6 @@
+@import "tailwindcss";
+
+* {
+  overflow-anchor: none;
+  scroll-behavior: auto !important;
+}

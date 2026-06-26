@@ -1,0 +1,22 @@
+[
+  {
+    "name": "Farmer",
+    "phone": "+919976491145",
+    "email": "",
+    "lat": -24.25647,
+    "lon": -65.21163,
+    "locationName": "Palpalá",
+    "id": "1781969278816",
+    "createdAt": "2026-06-20T15:27:58.816Z"
+  },
+  {
+    "name": "Farmer",
+    "phone": "+91997649145",
+    "email": "",
+    "lat": 40.68333,
+    "lon": 19.61944,
+    "locationName": "Patos",
+    "id": "1781962959468",
+    "createdAt": "2026-06-20T13:42:39.468Z"
+  }
+]

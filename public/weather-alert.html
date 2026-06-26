@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KISAN-VISION Weather Alert</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: system-ui, Arial, sans-serif; min-height: 100vh; overflow-x: hidden; background: #000; }
+  #yt-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+  #yt-bg iframe { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 177.78vh; height: 100vh; min-width: 100vw; min-height: 56.25vw; border: none; pointer-events: none; }
+  .overlay { position: fixed; inset: 0; z-index: 1; background: linear-gradient(to bottom, rgba(0,8,0,0.7), rgba(0,15,5,0.55), rgba(0,8,0,0.8)); }
+  @keyframes scan { 0% { top: -2px; opacity: 0.8; } 100% { top: 100%; opacity: 0; } }
+  .scanline { position: fixed; left: 0; right: 0; height: 2px; z-index: 2; background: linear-gradient(90deg, transparent, rgba(74,222,128,0.8), transparent); animation: scan 5s linear infinite; box-shadow: 0 0 10px rgba(74,222,128,0.5); }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+  .live-badge { position: fixed; top: 20px; right: 20px; z-index: 10; display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.6); border: 1px solid rgba(74,222,128,0.4); border-radius: 20px; padding: 7px 14px; backdrop-filter: blur(10px); }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; animation: blink 1.5s ease infinite; }
+  .live-text { color: #4ade80; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+  .page { position: relative; z-index: 3; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; }
+  .card { background: rgba(2,10,2,0.88); border: 1px solid rgba(74,222,128,0.25); border-radius: 22px; padding: 34px; width: 100%; max-width: 430px; backdrop-filter: blur(24px); box-shadow: 0 25px 80px rgba(0,0,0,0.7); animation: fadeUp 0.6s ease forwards; }
+  .header { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+  .icon-box { width: 46px; height: 46px; border-radius: 13px; background: rgba(22,101,52,0.7); border: 1px solid rgba(74,222,128,0.3); display: flex; align-items: center; justify-content: center; font-size: 22px; }
+  h2 { color: #4ade80; font-size: 20px; font-weight: 800; }
+  .subtitle { color: #365f45; font-size: 12px; letter-spacing: 0.05em; margin-top: 2px; }
+  .divider { height: 1px; margin: 18px 0; background: linear-gradient(90deg, transparent, rgba(74,222,128,0.3), transparent); }
+  .location-box { display: flex; align-items: center; gap: 10px; background: rgba(22,101,52,0.2); border: 1px solid rgba(74,222,128,0.15); border-radius: 12px; padding: 12px 14px; margin-bottom: 22px; }
+  .loc-name { color: #4ade80; font-weight: 700; font-size: 14px; }
+  .loc-coords { color: #374151; font-size: 11px; margin-top: 2px; }
+  #success-box { display: none; flex-direction: column; align-items: center; background: rgba(5,46,22,0.95); border: 2px solid #4ade80; border-radius: 16px; padding: 28px 20px; margin-bottom: 22px; text-align: center; box-shadow: 0 0 30px rgba(74,222,128,0.15); }
+  .success-icon { font-size: 56px; line-height: 1; margin-bottom: 12px; }
+  .success-title { color: #4ade80; font-weight: 800; font-size: 20px; margin-bottom: 6px; }
+  .success-sub { color: #86efac; font-size: 13px; margin-bottom: 14px; }
+  .success-contact { color: #4ade80; font-weight: 700; font-size: 15px; margin: 2px 0; }
+  .success-note { color: #166534; font-size: 11px; margin-top: 14px; }
+  label { color: #4b5563; font-size: 11px; display: block; margin-bottom: 7px; font-weight: 700; letter-spacing: 0.08em; }
+  input { width: 100%; background: rgba(0,0,0,0.55); color: #f0fdf4; border: 1px solid rgba(74,222,128,0.25); border-radius: 10px; padding: 13px 16px; font-size: 16px; outline: none; transition: border 0.2s; margin-bottom: 14px; }
+  input:focus { border-color: #4ade80; background: rgba(0,0,0,0.75); }
+  input::placeholder { color: #4b5563; }
+  #send-btn { width: 100%; background: #16a34a; color: #fff; border: none; border-radius: 12px; padding: 16px; font-size: 17px; font-weight: 800; cursor: pointer; letter-spacing: 0.02em; transition: all 0.2s; margin-top: 8px; }
+  #send-btn:hover:not(:disabled) { background: #15803d; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(22,163,74,0.4); }
+  #send-btn:disabled { cursor: wait; opacity: 0.7; }
+  .includes { margin-top: 20px; padding: 14px; background: rgba(0,0,0,0.4); border-radius: 10px; border: 1px solid #0f1f0f; }
+  .includes-title { color: #1f2d1f; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; margin-bottom: 8px; }
+  .includes p { color: #374151; font-size: 12px; margin: 5px 0; }
+  .footer { color: #1a2e1a; font-size: 11px; text-align: center; margin-top: 16px; }
+
+.bg-image {
+  position:fixed; inset:0; z-index:0;
+  background-image: url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1920&q=80');
+  background-size:cover; background-position:center; background-attachment:fixed;
+  filter:brightness(0.3) saturate(0.8);
+}
+.bg-overlay {
+  position:fixed; inset:0; z-index:1;
+  background:linear-gradient(to bottom,rgba(1,10,1,0.75) 0%,rgba(1,20,5,0.5) 50%,rgba(1,10,1,0.9) 100%);
+}
+</style>
+<script src="/SpaceBG.js"></script>
+</head>
+<body>
+<div class="bg-image"></div>
+<div class="bg-overlay"></div>
+
+
+<div id="yt-bg">
+  <iframe src="https://www.youtube.com/embed/BHACKCNDMW8?autoplay=1&mute=1&loop=1&playlist=BHACKCNDMW8&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1" allow="autoplay; encrypted-media"></iframe>
+</div>
+<div class="overlay"></div>
+<div class="scanline"></div>
+<div class="live-badge">
+  <span class="live-dot"></span>
+  <span class="live-text">🛰️ KISAN-VISION LIVE</span>
+</div>
+
+<div class="page">
+  <div class="card">
+    <div class="header">
+      <div class="icon-box">🌾</div>
+      <div>
+        <h2>Weather Alert</h2>
+        <div class="subtitle">KISAN-VISION · Daily Farm Reports</div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="location-box">
+      <span style="font-size:20px">📍</span>
+      <div>
+        <div class="loc-name" id="loc-name">Loading...</div>
+        <div class="loc-coords" id="loc-coords"></div>
+      </div>
+    </div>
+
+    <div id="success-box">
+      <div class="success-icon">✅</div>
+      <div class="success-title">Report Sent!</div>
+      <div class="success-sub">Daily reports arrive at <strong>6 AM</strong> every morning</div>
+      <div class="success-contact" id="sent-phone"></div>
+      <div class="success-contact" id="sent-email"></div>
+      <div class="success-note">Check your WhatsApp — first report sent now!</div>
+    </div>
+
+    <label>📱 WHATSAPP NUMBER</label>
+    <input type="tel" id="phone" value="+91" placeholder="+919876543210">
+
+    <label>📧 EMAIL <span style="color:#1f2937;font-weight:400">(optional)</span></label>
+    <input type="email" id="email" placeholder="farmer@email.com">
+
+    <button type="button" id="send-btn" onclick="sendReport()">📲 Send Weather Report Now</button>
+
+    <div class="includes">
+      <div class="includes-title">DAILY REPORT INCLUDES</div>
+      <p>🌡️ Temperature & humidity</p>
+      <p>🌿 NDVI vegetation health</p>
+      <p>💧 Irrigation advisory</p>
+      <p>🌾 Crop & harvest estimate</p>
+      <p>⚠️ Disease risk alert</p>
+    </div>
+    <div class="footer">Free · Sentinel-2 Satellite · OpenWeatherMap</div>
+  </div>
+</div>
+
+<script>
+  const params = new URLSearchParams(window.location.search)
+  const lat = parseFloat(params.get('lat') || '0')
+  const lon = parseFloat(params.get('lon') || '0')
+  const locationName = params.get('location') || 'Selected Location'
+  document.getElementById('loc-name').textContent = locationName
+  document.getElementById('loc-coords').textContent = lat.toFixed(4) + '° N · ' + lon.toFixed(4) + '° E'
+
+  async function sendReport() {
+    const phone = document.getElementById('phone').value
+    const email = document.getElementById('email').value
+    if (!phone && !email) { alert('Enter phone or email!'); return }
+    const btn = document.getElementById('send-btn')
+    btn.disabled = true
+    btn.textContent = '📤 Sending...'
+    try {
+      const token = localStorage.getItem('token') || ''
+      const res = await fetch('http://localhost:3001/api/alerts/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({ phone, email, lat, lon, locationName })
+      })
+      const data = await res.json()
+      if (data.success) {
+        if (phone) document.getElementById('sent-phone').textContent = '📱 ' + phone
+        if (email) document.getElementById('sent-email').textContent = '📧 ' + email
+        document.getElementById('success-box').style.display = 'flex'
+        btn.textContent = '✅ Sent! Send Another'
+        btn.style.background = '#065f46'
+        btn.disabled = false
+      } else {
+        alert(data.error || 'Failed to send')
+        btn.textContent = '📲 Send Weather Report Now'
+        btn.disabled = false
+      }
+    } catch(e) {
+      alert('Connection error. Please try again.')
+      btn.textContent = '📲 Send Weather Report Now'
+      btn.disabled = false
+    }
+  }
+</script>
+<div id="lang-switcher" style="position:fixed;top:12px;right:12px;z-index:9999;display:flex;gap:4px;background:rgba(0,0,0,0.7);border:1px solid rgba(74,222,128,0.3);border-radius:10px;padding:4px">
+  <button onclick="localStorage.setItem('kisan_lang','en');location.reload()" id="btn-en" style="padding:4px 10px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;border:none;background:transparent;color:#4ade80">EN</button>
+  <button onclick="localStorage.setItem('kisan_lang','hi');location.reload()" id="btn-hi" style="padding:4px 10px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;border:none;background:transparent;color:#4ade80">हि</button>
+  <button onclick="localStorage.setItem('kisan_lang','ta');location.reload()" id="btn-ta" style="padding:4px 10px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;border:none;background:transparent;color:#4ade80">த</button>
+</div>
+<script>document.addEventListener('DOMContentLoaded',()=>{const l=localStorage.getItem('kisan_lang')||'en';const b=document.getElementById('btn-'+l);if(b)b.style.background='#16a34a'})</script>
+</body>
+</html>

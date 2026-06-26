@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KISAN-VISION - My Farm Lands</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family:system-ui,Arial,sans-serif;
+  color:#f0fdf4;
+  min-height:100vh;
+  background:#030a03;
+}
+.bg-image {
+  position:fixed;
+  inset:0;
+  z-index:0;
+  background-image: url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1920&q=80');
+  background-size:cover;
+  background-position:center;
+  background-attachment:fixed;
+  filter:brightness(0.35) saturate(0.8);
+}
+.bg-overlay {
+  position:fixed;
+  inset:0;
+  z-index:1;
+  background:linear-gradient(to bottom,rgba(1,10,1,0.7) 0%,rgba(1,20,5,0.5) 50%,rgba(1,10,1,0.85) 100%);
+}
+nav { position:relative; z-index:10; background:rgba(2,10,2,0.85); border-bottom:1px solid rgba(74,222,128,0.2); padding:0 24px; display:flex; align-items:center; justify-content:space-between; height:60px; backdrop-filter:blur(12px); }
+.brand-name { color:#4ade80; font-size:16px; font-weight:800; }
+.content { max-width:960px; margin:0 auto; padding:40px 24px; }
+.page-title { color:#4ade80; font-size:28px; font-weight:800; margin-bottom:8px; }
+.page-sub { color:#365f45; font-size:13px; margin-bottom:28px; }
+#lands-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(400px,1fr)); gap:20px; }
+.land-card { background:rgba(2,20,5,0.75); border:1px solid rgba(74,222,128,0.25); border-radius:16px; padding:24px; backdrop-filter:blur(16px); box-shadow:0 8px 32px rgba(0,0,0,0.5); }
+.land-card:hover { border-color:rgba(74,222,128,0.4); }
+.land-name { color:#4ade80; font-size:17px; font-weight:800; margin-bottom:4px; }
+.land-loc { color:#365f45; font-size:12px; margin-bottom:6px; }
+.land-farmer { color:#6b7280; font-size:12px; margin-bottom:16px; }
+.meta-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:16px; }
+.meta-item { background:rgba(0,0,0,0.35); border-radius:8px; padding:8px 12px; }
+.meta-label { color:#365f45; font-size:10px; font-weight:700; margin-bottom:2px; }
+.meta-val { color:#86efac; font-size:12px; font-weight:600; }
+.btn-row { display:flex; gap:10px; }
+.analyse-btn { flex:1; background:linear-gradient(135deg,#16a34a,#065f46); color:#fff; border:none; border-radius:10px; padding:13px; font-size:14px; font-weight:800; cursor:pointer; }
+.analyse-btn:hover { opacity:0.85; }
+.delete-btn { background:rgba(239,68,68,0.12); color:#ef4444; border:1px solid rgba(239,68,68,0.3); border-radius:10px; padding:13px 18px; font-size:14px; font-weight:800; cursor:pointer; }
+.delete-btn:hover { background:rgba(239,68,68,0.25); }
+.route-btn { background:rgba(59,130,246,0.15); color:#60a5fa; border:1px solid rgba(59,130,246,0.3); border-radius:10px; padding:13px 14px; font-size:14px; font-weight:800; cursor:pointer; }
+.route-btn:hover { background:rgba(59,130,246,0.3); }
+.ai-btn { width:100%; margin-top:10px; background:linear-gradient(135deg,rgba(139,92,246,0.2),rgba(59,130,246,0.2)); color:#a78bfa; border:1px solid rgba(139,92,246,0.4); border-radius:10px; padding:12px; font-size:13px; font-weight:800; cursor:pointer; }
+.ai-btn:hover { background:linear-gradient(135deg,rgba(139,92,246,0.35),rgba(59,130,246,0.35)); }
+.loading { text-align:center; padding:80px; color:#365f45; font-size:15px; }
+.nav-btn { background:rgba(22,101,52,0.3); color:#4ade80; border:1px solid rgba(74,222,128,0.3); border-radius:8px; padding:8px 16px; font-size:12px; font-weight:700; cursor:pointer; text-decoration:none; }
+</style>
+</head>
+<body>
+<div class="bg-image"></div>
+<div class="bg-overlay"></div>
+<nav>
+  <div class="brand-name">KISAN-VISION &mdash; My Farm Lands</div>
+  <div style="display:flex;gap:10px;align-items:center;">
+    <a href="/register-land.html" class="nav-btn">+ Register New Land</a>
+    <button onclick="window.location.href='/'" class="nav-btn">&#8592; Dashboard</button>
+  </div>
+</nav>
+<div class="content" style="position:relative;z-index:2;">
+  <h1 class="page-title">My Farm Lands</h1>
+  <p class="page-sub">All your farm lands — click Analyse for full satellite report</p>
+  <div id="lands-grid"><div class="loading">Loading your lands...</div></div>
+</div>
+<script>
+var allLands = [];
+
+function goAnalyse(id) {
+  for (var i = 0; i < allLands.length; i++) {
+    if (allLands[i].id == id) {
+      var l = allLands[i];
+      window.location.href = '/land-analysis.html?id=' + l.id + '&lat=' + (l.center_lat||0) + '&lon=' + (l.center_lon||0) + '&name=' + encodeURIComponent(l.land_name||'Farm '+l.id) + '&loc=' + encodeURIComponent(l.detected_location||'');
+      return;
+    }
+  }
+}
+
+function deleteLand(id) {
+  if (!confirm('Delete this land permanently?')) return;
+  var token = localStorage.getItem('token') || '';
+  fetch('http://localhost:3001/api/lands/' + id, {
+    method: 'DELETE',
+    headers: { 'Authorization': 'Bearer ' + token }
+  }).then(function(r) {
+    if (r.ok) { loadLands(); }
+    else { alert('Delete failed. Check server.'); }
+  }).catch(function() { alert('Connection error.'); });
+}
+
+function goRoute(id) {
+  for (var i = 0; i < allLands.length; i++) {
+    if (allLands[i].id == id) {
+      var l = allLands[i];
+      var url = 'https://www.google.com/maps/dir/?api=1&destination=' + (l.center_lat||0) + ',' + (l.center_lon||0);
+      window.open(url, '_blank');
+      return;
+    }
+  }
+}
+
+function goAI(id) {
+  for (var i = 0; i < allLands.length; i++) {
+    if (allLands[i].id == id) {
+      var l = allLands[i];
+      var data = encodeURIComponent(JSON.stringify({
+        id: l.id,
+        name: l.land_name || 'Farm ' + (allLands.indexOf(l)+1),
+        location: l.detected_location || '',
+        crop: l.crop_type || '',
+        lat: l.center_lat || 0,
+        lon: l.center_lon || 0,
+        farmer: l.farmer_name || '',
+        phone: l.phone || ''
+      }));
+      window.location.href = '/ai-chat.html?farm=' + data;
+      return;
+    }
+  }
+}
+
+function loadLands() {
+  var token = localStorage.getItem('token') || '';
+  fetch('http://localhost:3001/api/lands/all', { headers: { 'Authorization': 'Bearer ' + token } })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    allLands = data.lands || [];
+    var userEmail = '';
+    try {
+      var payload = JSON.parse(atob(token.split('.')[1]));
+      userEmail = payload.email || '';
+    } catch(e) {}
+    var list = userEmail ? allLands.filter(function(l) { return l.email === userEmail; }) : allLands;
+    var grid = document.getElementById('lands-grid');
+    if (!list.length) {
+      grid.innerHTML = '<div class="loading">No lands registered yet.<br>Click Register New Land to add your first farm.</div>';
+      return;
+    }
+    var h = '';
+    for (var i = 0; i < list.length; i++) {
+      var land = list[i];
+      var coords = (land.center_lat && land.center_lon) ? parseFloat(land.center_lat).toFixed(4) + 'N, ' + parseFloat(land.center_lon).toFixed(4) + 'E' : 'N/A';
+      var date = new Date(land.created_at).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'});
+      h += '<div class="land-card">';
+      h += '<div class="land-name">' + (land.land_name || 'Farm ' + (i+1)) + '  <span style="color:#365f45;font-size:11px;font-weight:400;">ID #' + land.id + '</span></div>';
+      h += '<div class="land-loc">&#128205; ' + (land.detected_location || 'Location not set') + '</div>';
+      h += '<div class="land-farmer">&#128100; ' + (land.farmer_name||'') + ' &nbsp;&middot;&nbsp; ' + (land.email||'') + '</div>';
+      h += '<div class="meta-grid">';
+      h += '<div class="meta-item"><div class="meta-label">CROP</div><div class="meta-val">' + (land.crop_type||'Not specified') + '</div></div>';
+      h += '<div class="meta-item"><div class="meta-label">REGISTERED</div><div class="meta-val">' + date + '</div></div>';
+      h += '<div class="meta-item"><div class="meta-label">COORDINATES</div><div class="meta-val">' + coords + '</div></div>';
+      h += '<div class="meta-item"><div class="meta-label">WHATSAPP</div><div class="meta-val">' + (land.phone||'N/A') + '</div></div>';
+      h += '</div>';
+      h += '<div class="btn-row">';
+      h += '<button class="analyse-btn" onclick="goAnalyse(' + land.id + ')">&#128752; Analyse</button>';
+      h += '<button class="route-btn" onclick="goRoute(' + land.id + ')">&#128205; Route</button>';
+      h += '<button class="delete-btn" onclick="deleteLand(' + land.id + ')">&#128465;</button>';
+      h += '</div>';
+      h += '<button class="ai-btn" onclick="goAI(' + land.id + ')">&#129776; Connect with KISAN AI for Assistance</button>';
+      h += '</div>';
+    }
+    grid.innerHTML = h;
+  }).catch(function() {
+    document.getElementById('lands-grid').innerHTML = '<div class="loading">Failed to load lands. Is the server running?</div>';
+  });
+}
+
+loadLands();
+</script>
+</body>
+</html>
