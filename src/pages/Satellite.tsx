@@ -77,9 +77,9 @@ function AIGirl({ result, onAsk, lang }: { result: any; onAsk: (q: string) => vo
     setInput('')
     try {
       const context = result ? `Satellite data: NDVI=${result.ndvi}, NDWI=${result.ndwi}, EVI=${result.evi}, Advisory=${result.advisory?.status}, Crop=${result.cropEstimate?.likelyCrops?.join(',')}, Temp=${result.weather?.temp}°C, Humidity=${result.weather?.humidity}%, Wind=${result.weather?.wind_speed}m/s, Harvest=${result.harvest?.estimatedHarvestDate}` : 'No satellite data loaded yet'
-      const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      const groqRes = await fetch('/api/ai/groq', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer GROQ_API_KEY_HERE' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'system', content: 'You are KISAN AI, expert agricultural scientist for Indian farming. Give detailed, actionable advice.' }, { role: 'user', content: 'Satellite data context: ' + context + '\n\nQuestion: ' + q }], max_tokens: 800, temperature: 0.7 })
       })
       const groqData = await groqRes.json()
@@ -613,9 +613,9 @@ export default function Satellite() {
                     const loc = selectedCity || ((marker?.lat?.toFixed(4) || '0') + 'N ' + (marker?.lon?.toFixed(4) || '0') + 'E')
                     const ctx = 'Location:' + loc + ',NDVI:' + result.ndvi + ',NDWI:' + result.ndwi + ',EVI:' + result.evi + ',Temp:' + result.weather?.temp + 'C,Humidity:' + result.weather?.humidity + '%,Weather:' + result.weather?.description + ',LandCover:' + result.landCover + ',Season:' + result.cropEstimate?.season + ',Advisory:' + result.advisory?.status + ',SoilMoisture:' + result.sar?.soilMoisture
                     try {
-                      const _gr = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                      const _gr = await fetch('/api/ai/groq', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer GROQ_API_KEY_HERE' },
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'system', content: 'You are KISAN AI, expert agricultural scientist for Indian farming.' }, { role: 'user', content: 'Satellite data: ' + ctx + '\n\nProvide a planting guide: 1. TOP 8 CROPS TO PLANT NOW with reasons 2. CROPS TO AVOID with reasons 3. OPTIMAL PLANTING WINDOW 4. SOIL PREPARATION steps 5. EXPECTED YIELD per acre. Be specific for Indian farming context.' }], max_tokens: 1200, temperature: 0.7 })
                       })
                       const _gd = await _gr.json()

@@ -10,6 +10,7 @@ import chatRoutes from './routes/chat'
 import alertRoutes from './routes/alerts'
 import reportRoutes from './routes/report'
 import cropDetectRoutes from './routes/cropDetect'
+import aiRoutes from './routes/ai'
 import cron from 'node-cron'
 import { sendDailyReports } from './services/dailyReport'
 
@@ -28,6 +29,7 @@ app.use('/api/chat', chatRoutes)
 app.use('/api/alerts', alertRoutes)
 app.use('/api/crop-detect', cropDetectRoutes)
 app.use('/api/report', reportRoutes)
+app.use('/api/ai', aiRoutes)
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'KISAN-VISION API running' })
