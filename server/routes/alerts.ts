@@ -88,4 +88,23 @@ Powered by KISAN-VISION 🛰️`
   }
 })
 
+
+router.post('/unsubscribe', async (req, res) => {
+  try {
+    const { contact } = req.body
+    if (!contact) return res.status(400).json({ error: 'Contact required' })
+    let list: any[] = []
+    try {
+      if (fs.existsSync(DB_FILE)) list = JSON.parse(fs.readFileSync(DB_FILE, 'utf-8'))
+    } catch {}
+    const before = list.length
+    list = list.filter((s: any) => s.phone !== contact && s.email !== contact)
+    if (list.length === before) return res.status(404).json({ error: 'Subscriber not found' })
+    fs.writeFileSync(DB_FILE, JSON.stringify(list, null, 2))
+    res.json({ success: true })
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message || 'Failed' })
+  }
+})
+
 export default router

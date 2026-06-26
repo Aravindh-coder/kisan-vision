@@ -355,11 +355,12 @@ function applyLang() {
     hi: { name: 'किसान का नाम *', phone: 'WhatsApp नंबर (+91...)', email: 'ईमेल पता (दैनिक रिपोर्ट के लिए)', landName: 'जमीन का नाम (वैकल्पिक)', crop: 'फसल प्रकार (जैसे धान, गेहूं)', register: '🌾 मेरी जमीन दर्ज करें' },
     ta: { name: 'விவசாயி பெயர் *', phone: 'WhatsApp எண் (+91...)', email: 'மின்னஞ்சல் (தினசரி அறிக்கைக்கு)', landName: 'நில பெயர் (விருப்பம்)', crop: 'தற்போதைய பயிர் (எ.கா. நெல், கோதுமை)', register: '🌾 என் நிலத்தை பதிவு செய்' }
   }
-  const mt = mapT[htmlLang] || mapT['en']
+  const mt = mapT[htmlLang] || mapT['en'] || mapT[Object.keys(mapT)[0]]
   const fields = {
     'farmer-name': mt.name, 'farmer-phone': mt.phone,
     'farmer-email': mt.email, 'land-name': mt.landName, 'crop-type': mt.crop
   }
+  if (!mt) return
   Object.entries(fields).forEach(([id, ph]) => {
     const el = document.getElementById(id)
     if (el) el.placeholder = ph

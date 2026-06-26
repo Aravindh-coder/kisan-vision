@@ -5,168 +5,236 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>KISAN-VISION Weather Alert</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: system-ui, Arial, sans-serif; min-height: 100vh; overflow-x: hidden; background: #000; }
-  #yt-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
-  #yt-bg iframe { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 177.78vh; height: 100vh; min-width: 100vw; min-height: 56.25vw; border: none; pointer-events: none; }
-  .overlay { position: fixed; inset: 0; z-index: 1; background: linear-gradient(to bottom, rgba(0,8,0,0.7), rgba(0,15,5,0.55), rgba(0,8,0,0.8)); }
-  @keyframes scan { 0% { top: -2px; opacity: 0.8; } 100% { top: 100%; opacity: 0; } }
-  .scanline { position: fixed; left: 0; right: 0; height: 2px; z-index: 2; background: linear-gradient(90deg, transparent, rgba(74,222,128,0.8), transparent); animation: scan 5s linear infinite; box-shadow: 0 0 10px rgba(74,222,128,0.5); }
-  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
-  .live-badge { position: fixed; top: 20px; right: 20px; z-index: 10; display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.6); border: 1px solid rgba(74,222,128,0.4); border-radius: 20px; padding: 7px 14px; backdrop-filter: blur(10px); }
-  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; animation: blink 1.5s ease infinite; }
-  .live-text { color: #4ade80; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; }
-  @keyframes fadeUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
-  .page { position: relative; z-index: 3; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; }
-  .card { background: rgba(2,10,2,0.88); border: 1px solid rgba(74,222,128,0.25); border-radius: 22px; padding: 34px; width: 100%; max-width: 430px; backdrop-filter: blur(24px); box-shadow: 0 25px 80px rgba(0,0,0,0.7); animation: fadeUp 0.6s ease forwards; }
-  .header { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
-  .icon-box { width: 46px; height: 46px; border-radius: 13px; background: rgba(22,101,52,0.7); border: 1px solid rgba(74,222,128,0.3); display: flex; align-items: center; justify-content: center; font-size: 22px; }
-  h2 { color: #4ade80; font-size: 20px; font-weight: 800; }
-  .subtitle { color: #365f45; font-size: 12px; letter-spacing: 0.05em; margin-top: 2px; }
-  .divider { height: 1px; margin: 18px 0; background: linear-gradient(90deg, transparent, rgba(74,222,128,0.3), transparent); }
-  .location-box { display: flex; align-items: center; gap: 10px; background: rgba(22,101,52,0.2); border: 1px solid rgba(74,222,128,0.15); border-radius: 12px; padding: 12px 14px; margin-bottom: 22px; }
-  .loc-name { color: #4ade80; font-weight: 700; font-size: 14px; }
-  .loc-coords { color: #374151; font-size: 11px; margin-top: 2px; }
-  #success-box { display: none; flex-direction: column; align-items: center; background: rgba(5,46,22,0.95); border: 2px solid #4ade80; border-radius: 16px; padding: 28px 20px; margin-bottom: 22px; text-align: center; box-shadow: 0 0 30px rgba(74,222,128,0.15); }
-  .success-icon { font-size: 56px; line-height: 1; margin-bottom: 12px; }
-  .success-title { color: #4ade80; font-weight: 800; font-size: 20px; margin-bottom: 6px; }
-  .success-sub { color: #86efac; font-size: 13px; margin-bottom: 14px; }
-  .success-contact { color: #4ade80; font-weight: 700; font-size: 15px; margin: 2px 0; }
-  .success-note { color: #166534; font-size: 11px; margin-top: 14px; }
-  label { color: #4b5563; font-size: 11px; display: block; margin-bottom: 7px; font-weight: 700; letter-spacing: 0.08em; }
-  input { width: 100%; background: rgba(0,0,0,0.55); color: #f0fdf4; border: 1px solid rgba(74,222,128,0.25); border-radius: 10px; padding: 13px 16px; font-size: 16px; outline: none; transition: border 0.2s; margin-bottom: 14px; }
-  input:focus { border-color: #4ade80; background: rgba(0,0,0,0.75); }
-  input::placeholder { color: #4b5563; }
-  #send-btn { width: 100%; background: #16a34a; color: #fff; border: none; border-radius: 12px; padding: 16px; font-size: 17px; font-weight: 800; cursor: pointer; letter-spacing: 0.02em; transition: all 0.2s; margin-top: 8px; }
-  #send-btn:hover:not(:disabled) { background: #15803d; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(22,163,74,0.4); }
-  #send-btn:disabled { cursor: wait; opacity: 0.7; }
-  .includes { margin-top: 20px; padding: 14px; background: rgba(0,0,0,0.4); border-radius: 10px; border: 1px solid #0f1f0f; }
-  .includes-title { color: #1f2d1f; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; margin-bottom: 8px; }
-  .includes p { color: #374151; font-size: 12px; margin: 5px 0; }
-  .footer { color: #1a2e1a; font-size: 11px; text-align: center; margin-top: 16px; }
-
-.bg-image {
-  position:fixed; inset:0; z-index:0;
-  background-image: url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1920&q=80');
-  background-size:cover; background-position:center; background-attachment:fixed;
-  filter:brightness(0.3) saturate(0.8);
-}
-.bg-overlay {
-  position:fixed; inset:0; z-index:1;
-  background:linear-gradient(to bottom,rgba(1,10,1,0.75) 0%,rgba(1,20,5,0.5) 50%,rgba(1,10,1,0.9) 100%);
-}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:system-ui,Arial,sans-serif; min-height:100vh; background:#000; color:#f0fdf4; }
+.bg-image { position:fixed; inset:0; z-index:0; background-image:url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1920&q=80'); background-size:cover; background-position:center; filter:brightness(0.3) saturate(0.8); }
+.bg-overlay { position:fixed; inset:0; z-index:1; background:linear-gradient(to bottom,rgba(1,10,1,0.75),rgba(1,20,5,0.5),rgba(1,10,1,0.9)); }
+@keyframes scan { 0%{top:0;opacity:0.8} 100%{top:100%;opacity:0} }
+.scanline { position:fixed; left:0; right:0; height:2px; z-index:2; background:linear-gradient(90deg,transparent,rgba(74,222,128,0.8),transparent); animation:scan 5s linear infinite; pointer-events:none; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+@keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+.page { position:relative; z-index:3; display:flex; align-items:center; justify-content:center; min-height:100vh; padding:24px; }
+.card { background:rgba(2,10,2,0.88); border:1px solid rgba(74,222,128,0.25); border-radius:22px; padding:34px; width:100%; max-width:460px; backdrop-filter:blur(24px); box-shadow:0 25px 80px rgba(0,0,0,0.7); animation:fadeUp 0.6s ease forwards; }
+.header { display:flex; align-items:center; gap:12px; margin-bottom:6px; }
+.icon-box { width:46px; height:46px; border-radius:13px; background:rgba(22,101,52,0.7); border:1px solid rgba(74,222,128,0.3); display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; }
+h2 { color:#4ade80; font-size:20px; font-weight:800; }
+.subtitle { color:#365f45; font-size:12px; margin-top:2px; }
+.divider { height:1px; margin:18px 0; background:linear-gradient(90deg,transparent,rgba(74,222,128,0.3),transparent); }
+.location-box { background:rgba(22,101,52,0.2); border:1px solid rgba(74,222,128,0.15); border-radius:12px; padding:12px 14px; margin-bottom:16px; }
+.loc-row { display:flex; align-items:center; gap:10px; }
+.loc-name { color:#4ade80; font-weight:700; font-size:14px; }
+.loc-coords { color:#374151; font-size:11px; margin-top:2px; }
+.loc-btn { margin-top:10px; width:100%; background:rgba(22,101,52,0.3); color:#4ade80; border:1px solid rgba(74,222,128,0.3); border-radius:8px; padding:9px; font-size:13px; font-weight:700; cursor:pointer; }
+.loc-btn:hover { background:rgba(22,101,52,0.5); }
+.map-box { display:none; margin-top:10px; border-radius:10px; overflow:hidden; border:1px solid rgba(74,222,128,0.2); }
+label { color:#4b5563; font-size:11px; display:block; margin-bottom:7px; font-weight:700; letter-spacing:0.08em; }
+input { width:100%; background:rgba(0,0,0,0.55); color:#f0fdf4; border:1px solid rgba(74,222,128,0.25); border-radius:10px; padding:13px 16px; font-size:16px; outline:none; transition:border 0.2s; margin-bottom:14px; }
+input:focus { border-color:#4ade80; }
+input::placeholder { color:#4b5563; }
+.btn-row { display:flex; gap:10px; margin-top:8px; }
+#send-btn { flex:1; background:#16a34a; color:#fff; border:none; border-radius:12px; padding:16px; font-size:16px; font-weight:800; cursor:pointer; transition:all 0.2s; }
+#send-btn:hover:not(:disabled) { background:#15803d; transform:translateY(-2px); box-shadow:0 6px 20px rgba(22,163,74,0.4); }
+#send-btn:disabled { cursor:wait; opacity:0.7; }
+#unsub-btn { background:rgba(239,68,68,0.15); color:#ef4444; border:1px solid rgba(239,68,68,0.3); border-radius:12px; padding:16px 18px; font-size:14px; font-weight:800; cursor:pointer; }
+#unsub-btn:hover { background:rgba(239,68,68,0.3); }
+#success-box { display:none; flex-direction:column; align-items:center; background:rgba(5,46,22,0.95); border:2px solid #4ade80; border-radius:16px; padding:24px 20px; margin-bottom:16px; text-align:center; }
+.success-title { color:#4ade80; font-weight:800; font-size:18px; margin-bottom:6px; }
+.success-sub { color:#86efac; font-size:13px; margin-bottom:10px; }
+.includes { margin-top:18px; padding:14px; background:rgba(0,0,0,0.4); border-radius:10px; border:1px solid #0f1f0f; }
+.includes-title { color:#1f2d1f; font-size:10px; font-weight:700; letter-spacing:0.08em; margin-bottom:8px; }
+.includes p { color:#374151; font-size:12px; margin:5px 0; }
+.footer { color:#1a2e1a; font-size:11px; text-align:center; margin-top:16px; }
+.tab-row { display:flex; gap:8px; margin-bottom:16px; }
+.tab { flex:1; padding:9px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; border:1px solid rgba(74,222,128,0.2); background:transparent; color:#365f45; }
+.tab.active { background:rgba(22,101,52,0.4); color:#4ade80; border-color:rgba(74,222,128,0.4); }
 </style>
-<script src="/SpaceBG.js"></script>
 </head>
 <body>
 <div class="bg-image"></div>
 <div class="bg-overlay"></div>
-
-
-<div id="yt-bg">
-  <iframe src="https://www.youtube.com/embed/BHACKCNDMW8?autoplay=1&mute=1&loop=1&playlist=BHACKCNDMW8&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1" allow="autoplay; encrypted-media"></iframe>
-</div>
-<div class="overlay"></div>
 <div class="scanline"></div>
-<div class="live-badge">
-  <span class="live-dot"></span>
-  <span class="live-text">🛰️ KISAN-VISION LIVE</span>
-</div>
 
 <div class="page">
   <div class="card">
     <div class="header">
-      <div class="icon-box">🌾</div>
+      <div class="icon-box">🌦️</div>
       <div>
-        <h2>Weather Alert</h2>
+        <h2>Weather Alerts</h2>
         <div class="subtitle">KISAN-VISION · Daily Farm Reports</div>
       </div>
     </div>
     <div class="divider"></div>
+
     <div class="location-box">
-      <span style="font-size:20px">📍</span>
-      <div>
-        <div class="loc-name" id="loc-name">Loading...</div>
-        <div class="loc-coords" id="loc-coords"></div>
+      <div class="loc-row">
+        <span style="font-size:20px">📍</span>
+        <div>
+          <div class="loc-name" id="loc-name">Select your location</div>
+          <div class="loc-coords" id="loc-coords">Click below to pick location</div>
+        </div>
+      </div>
+      <button class="loc-btn" onclick="detectLocation()">📡 Use My Current Location</button>
+      <button class="loc-btn" style="margin-top:6px" onclick="toggleMap()">🗺️ Pick on Map</button>
+      <div class="map-box" id="map-box">
+        <iframe id="map-iframe" width="100%" height="200" frameborder="0" style="border:0" allowfullscreen src=""></iframe>
       </div>
     </div>
 
     <div id="success-box">
-      <div class="success-icon">✅</div>
-      <div class="success-title">Report Sent!</div>
-      <div class="success-sub">Daily reports arrive at <strong>6 AM</strong> every morning</div>
-      <div class="success-contact" id="sent-phone"></div>
-      <div class="success-contact" id="sent-email"></div>
-      <div class="success-note">Check your WhatsApp — first report sent now!</div>
+      <div style="font-size:48px;margin-bottom:10px">✅</div>
+      <div class="success-title" id="success-title">Subscribed!</div>
+      <div class="success-sub" id="success-msg">Daily reports will be sent every morning at 6 AM</div>
     </div>
 
-    <label>📱 WHATSAPP NUMBER</label>
-    <input type="tel" id="phone" value="+91" placeholder="+919876543210">
+    <div class="tab-row">
+      <button class="tab active" id="tab-sub" onclick="showTab('sub')">📲 Subscribe</button>
+      <button class="tab" id="tab-unsub" onclick="showTab('unsub')">🚫 Unsubscribe</button>
+    </div>
 
-    <label>📧 EMAIL <span style="color:#1f2937;font-weight:400">(optional)</span></label>
-    <input type="email" id="email" placeholder="farmer@email.com">
+    <div id="panel-sub">
+      <label>📱 WHATSAPP NUMBER</label>
+      <input type="tel" id="phone" placeholder="+919876543210">
+      <label>📧 EMAIL <span style="color:#1f2937;font-weight:400">(optional)</span></label>
+      <input type="email" id="email" placeholder="farmer@email.com">
+      <button type="button" id="send-btn" onclick="sendReport()">📲 Subscribe & Send First Report</button>
+    </div>
 
-    <button type="button" id="send-btn" onclick="sendReport()">📲 Send Weather Report Now</button>
+    <div id="panel-unsub" style="display:none">
+      <label>📱 WHATSAPP / 📧 EMAIL TO UNSUBSCRIBE</label>
+      <input type="text" id="unsub-contact" placeholder="+919876543210 or email@example.com">
+      <button type="button" id="unsub-btn" onclick="unsubscribe()">🚫 Unsubscribe from Daily Reports</button>
+    </div>
 
     <div class="includes">
       <div class="includes-title">DAILY REPORT INCLUDES</div>
-      <p>🌡️ Temperature & humidity</p>
-      <p>🌿 NDVI vegetation health</p>
+      <p>🌡️ Temperature & humidity forecast</p>
+      <p>🌿 NDVI vegetation health index</p>
       <p>💧 Irrigation advisory</p>
       <p>🌾 Crop & harvest estimate</p>
       <p>⚠️ Disease risk alert</p>
     </div>
-    <div class="footer">Free · Sentinel-2 Satellite · OpenWeatherMap</div>
+    <div class="footer">Free · Sentinel-2 Satellite · OpenWeatherMap · Daily at 6 AM</div>
   </div>
 </div>
 
 <script>
-  const params = new URLSearchParams(window.location.search)
-  const lat = parseFloat(params.get('lat') || '0')
-  const lon = parseFloat(params.get('lon') || '0')
-  const locationName = params.get('location') || 'Selected Location'
-  document.getElementById('loc-name').textContent = locationName
-  document.getElementById('loc-coords').textContent = lat.toFixed(4) + '° N · ' + lon.toFixed(4) + '° E'
+var lat = 0, lon = 0;
+var mapShowing = false;
 
-  async function sendReport() {
-    const phone = document.getElementById('phone').value
-    const email = document.getElementById('email').value
-    if (!phone && !email) { alert('Enter phone or email!'); return }
-    const btn = document.getElementById('send-btn')
-    btn.disabled = true
-    btn.textContent = '📤 Sending...'
-    try {
-      const token = localStorage.getItem('token') || ''
-      const res = await fetch('http://localhost:3001/api/alerts/subscribe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-        body: JSON.stringify({ phone, email, lat, lon, locationName })
-      })
-      const data = await res.json()
-      if (data.success) {
-        if (phone) document.getElementById('sent-phone').textContent = '📱 ' + phone
-        if (email) document.getElementById('sent-email').textContent = '📧 ' + email
-        document.getElementById('success-box').style.display = 'flex'
-        btn.textContent = '✅ Sent! Send Another'
-        btn.style.background = '#065f46'
-        btn.disabled = false
-      } else {
-        alert(data.error || 'Failed to send')
-        btn.textContent = '📲 Send Weather Report Now'
-        btn.disabled = false
-      }
-    } catch(e) {
-      alert('Connection error. Please try again.')
-      btn.textContent = '📲 Send Weather Report Now'
-      btn.disabled = false
-    }
+// Read from URL params if coming from satellite page
+var params = new URLSearchParams(window.location.search);
+if (params.get('lat') && params.get('lon')) {
+  lat = parseFloat(params.get('lat'));
+  lon = parseFloat(params.get('lon'));
+  var locName = params.get('location') || (lat.toFixed(4) + 'N, ' + lon.toFixed(4) + 'E');
+  document.getElementById('loc-name').textContent = locName;
+  document.getElementById('loc-coords').textContent = lat.toFixed(4) + 'N · ' + lon.toFixed(4) + 'E';
+}
+
+function detectLocation() {
+  if (!navigator.geolocation) { alert('Geolocation not supported'); return; }
+  document.getElementById('loc-name').textContent = 'Detecting...';
+  navigator.geolocation.getCurrentPosition(function(p) {
+    lat = p.coords.latitude;
+    lon = p.coords.longitude;
+    document.getElementById('loc-name').textContent = lat.toFixed(4) + 'N, ' + lon.toFixed(4) + 'E';
+    document.getElementById('loc-coords').textContent = 'GPS location detected';
+    // Reverse geocode
+    fetch('https://nominatim.openstreetmap.org/reverse?lat=' + lat + '&lon=' + lon + '&format=json')
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        var name = (d.address && (d.address.suburb || d.address.city || d.address.town || d.address.village)) || (lat.toFixed(4) + 'N');
+        document.getElementById('loc-name').textContent = name;
+      }).catch(function(){});
+  }, function() {
+    alert('Could not detect location. Please pick on map.');
+  });
+}
+
+function toggleMap() {
+  mapShowing = !mapShowing;
+  var box = document.getElementById('map-box');
+  if (mapShowing) {
+    box.style.display = 'block';
+    var cl = (lat && lon) ? lat + ',' + lon : '20.5937,78.9629';
+    document.getElementById('map-iframe').src = 'https://www.openstreetmap.org/export/embed.html?bbox=' + (lon-0.05) + '%2C' + (lat-0.05) + '%2C' + (lon+0.05) + '%2C' + (lat+0.05) + '&layer=mapnik&marker=' + cl;
+    alert('Tip: To pick a location, use GPS detection above or enter coordinates manually. Map is for preview only.');
+  } else {
+    box.style.display = 'none';
   }
+}
+
+function showTab(tab) {
+  document.getElementById('panel-sub').style.display = tab === 'sub' ? 'block' : 'none';
+  document.getElementById('panel-unsub').style.display = tab === 'unsub' ? 'block' : 'none';
+  document.getElementById('tab-sub').className = 'tab' + (tab === 'sub' ? ' active' : '');
+  document.getElementById('tab-unsub').className = 'tab' + (tab === 'unsub' ? ' active' : '');
+}
+
+async function sendReport() {
+  var phone = document.getElementById('phone').value.trim();
+  var email = document.getElementById('email').value.trim();
+  if (!phone && !email) { alert('Enter WhatsApp number or email!'); return; }
+  if (!lat || !lon) { alert('Please select your location first!'); return; }
+  var btn = document.getElementById('send-btn');
+  btn.disabled = true;
+  btn.textContent = 'Subscribing...';
+  try {
+    var token = localStorage.getItem('token') || '';
+    var locName = document.getElementById('loc-name').textContent;
+    var res = await fetch('/api/alerts/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ phone: phone, email: email, lat: lat, lon: lon, locationName: locName })
+    });
+    var data = await res.json();
+    if (data.success) {
+      document.getElementById('success-title').textContent = 'Subscribed!';
+      document.getElementById('success-msg').textContent = 'First report sent! Daily reports every morning at 6 AM. Reply STOP to WhatsApp to unsubscribe.';
+      document.getElementById('success-box').style.display = 'flex';
+      btn.textContent = '✅ Subscribed!';
+      btn.style.background = '#065f46';
+    } else {
+      alert(data.error || 'Failed to subscribe');
+      btn.textContent = '📲 Subscribe & Send First Report';
+      btn.disabled = false;
+    }
+  } catch(e) {
+    alert('Connection error. Please try again.');
+    btn.textContent = '📲 Subscribe & Send First Report';
+    btn.disabled = false;
+  }
+}
+
+async function unsubscribe() {
+  var contact = document.getElementById('unsub-contact').value.trim();
+  if (!contact) { alert('Enter your WhatsApp number or email'); return; }
+  var btn = document.getElementById('unsub-btn');
+  btn.disabled = true;
+  btn.textContent = 'Unsubscribing...';
+  try {
+    var res = await fetch('/api/alerts/unsubscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contact: contact })
+    });
+    var data = await res.json();
+    if (data.success) {
+      document.getElementById('success-title').textContent = 'Unsubscribed!';
+      document.getElementById('success-msg').textContent = 'You will no longer receive daily weather reports.';
+      document.getElementById('success-box').style.display = 'flex';
+      btn.textContent = '✅ Unsubscribed';
+    } else {
+      alert(data.error || 'Not found');
+      btn.textContent = '🚫 Unsubscribe from Daily Reports';
+      btn.disabled = false;
+    }
+  } catch(e) {
+    alert('Connection error');
+    btn.textContent = '🚫 Unsubscribe from Daily Reports';
+    btn.disabled = false;
+  }
+}
 </script>
-<div id="lang-switcher" style="position:fixed;top:12px;right:12px;z-index:9999;display:flex;gap:4px;background:rgba(0,0,0,0.7);border:1px solid rgba(74,222,128,0.3);border-radius:10px;padding:4px">
-  <button onclick="localStorage.setItem('kisan_lang','en');location.reload()" id="btn-en" style="padding:4px 10px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;border:none;background:transparent;color:#4ade80">EN</button>
-  <button onclick="localStorage.setItem('kisan_lang','hi');location.reload()" id="btn-hi" style="padding:4px 10px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;border:none;background:transparent;color:#4ade80">हि</button>
-  <button onclick="localStorage.setItem('kisan_lang','ta');location.reload()" id="btn-ta" style="padding:4px 10px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;border:none;background:transparent;color:#4ade80">த</button>
-</div>
-<script>document.addEventListener('DOMContentLoaded',()=>{const l=localStorage.getItem('kisan_lang')||'en';const b=document.getElementById('btn-'+l);if(b)b.style.background='#16a34a'})</script>
 </body>
 </html>
