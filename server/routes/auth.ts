@@ -60,6 +60,19 @@ router.get('/setup-db', async (req: any, res: any) => {
       role VARCHAR(50) DEFAULT 'farmer',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`)
+    await db.execute(sql`CREATE TABLE IF NOT EXISTS lands (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      farmer_name VARCHAR(255) NOT NULL,
+      phone VARCHAR(20),
+      email VARCHAR(255) NOT NULL,
+      land_name VARCHAR(255),
+      crop_type VARCHAR(100),
+      polygon_coords TEXT NOT NULL,
+      center_lat DOUBLE NOT NULL,
+      center_lon DOUBLE NOT NULL,
+      detected_location VARCHAR(500),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`)
     res.json({ ok: true, message: 'Tables created' })
   } catch (err: any) {
     res.status(500).json({ error: err.message })
