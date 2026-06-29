@@ -12,6 +12,7 @@ import reportRoutes from './routes/report'
 import cropDetectRoutes from './routes/cropDetect'
 import aiRoutes from './routes/ai'
 import cron from 'node-cron'
+import { sql } from 'drizzle-orm'
 import { sendAllDailyReports } from './services/dailyReport'
 
 dotenv.config()
@@ -34,6 +35,16 @@ app.use('/api/ai', aiRoutes)
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'KISAN-VISION API running' })
+})
+
+// Keep DB alive every 30 minutes
+cron.schedule('*/30 * * * *', async () => {
+  try {
+    const { db: database } = await import('./db/index')
+    const { sql } = await import('drizzle-orm')
+    await database.execute(sql`SELECT 1`)
+    console.log('DB keepalive ping')
+  } catch(e) {}
 })
 
 // Daily report at 6 AM every day
