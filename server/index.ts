@@ -20,7 +20,8 @@ const PORT = process.env.PORT || 3001
 
 app.use(cors())
 app.use(express.json())
-app.use(express.static(path.join(__dirname, '..')))
+const distPath = path.join(__dirname, '..')
+app.use(express.static(distPath))
 app.use('/api/auth', authRoutes)
 app.use('/api/analyze', analyzeRoutes)
 app.use('/api/lands', landRoutes)
@@ -44,7 +45,7 @@ cron.schedule('0 6 * * *', async () => {
 // Send test report 3 seconds after server starts
 
 app.get('/*splat', (req, res) => {
-  res.sendFile(path.join(__dirname, '../index.html'))
+  res.sendFile(path.join(distPath, 'index.html'))
 })
 
 app.listen(PORT, () => {
