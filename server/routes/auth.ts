@@ -73,6 +73,9 @@ router.get('/setup-db', async (req: any, res: any) => {
       detected_location VARCHAR(500),
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`)
+    try {
+      await db.execute(sql`ALTER TABLE lands ADD COLUMN lang VARCHAR(10) DEFAULT 'en'`)
+    } catch(e: any) { /* column may already exist */ }
     res.json({ ok: true, message: 'Tables created' })
   } catch (err: any) {
     res.status(500).json({ error: err.message })
