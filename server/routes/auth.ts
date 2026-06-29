@@ -39,3 +39,12 @@ router.post('/login', async (req, res) => {
 })
 
 export default router
+
+router.get('/test-db', async (req, res) => {
+  try {
+    const result = await db.select().from(users).limit(1)
+    res.json({ ok: true, count: result.length })
+  } catch (err: any) {
+    res.status(500).json({ error: err.message })
+  }
+})
