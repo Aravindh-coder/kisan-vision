@@ -4,11 +4,13 @@ import * as schema from './schema'
 import dotenv from 'dotenv'
 dotenv.config()
 
-const dbUrl = (process.env.DATABASE_URL || '').replace('?ssl-mode=REQUIRED', '')
+const rawUrl = (process.env.DATABASE_URL || '').replace('?ssl-mode=REQUIRED', '')
 
 const pool = mysql.createPool({
-  uri: dbUrl,
-  ssl: {}
+  uri: rawUrl,
+  ssl: { rejectUnauthorized: false },
+  waitForConnections: true,
+  connectionLimit: 5
 })
 
 export const db = drizzle(pool, { schema, mode: 'default' })
