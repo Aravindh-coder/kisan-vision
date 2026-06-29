@@ -47,9 +47,10 @@ router.post('/register', async (req, res) => {
       VALUES (${name}, ${phone}, ${email}, ${landName||null}, ${cropType||null}, ${coordsJson}, ${centerLat}, ${centerLon}, ${detectedLocation||null}, ${lang||'en'})
     `)
 
+    res.json({ success: true, message: 'Land registered successfully' })
     const today = new Date().toLocaleDateString('en-IN', { day:'2-digit', month:'long', year:'numeric' })
 
-    await transporter.sendMail({
+    transporter.sendMail({
       from: `"KISAN-VISION 🛰️" <${process.env.GMAIL_USER}>`,
       to: email,
       subject: '✅ Land Registration Confirmed — KISAN-VISION',
