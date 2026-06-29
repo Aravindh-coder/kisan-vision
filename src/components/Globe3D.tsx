@@ -49,7 +49,7 @@ async function reverseGeocode(lat: number, lon: number): Promise<string> {
   if (geocodeCache[key]) return geocodeCache[key]
   try {
     const res = await fetch(
-      `http://localhost:3001/api/satellite/reverse-geocode?lat=${lat}&lon=${lon}`,
+      `https://kisan-vision.onrender.com/api/satellite/reverse-geocode?lat=${lat}&lon=${lon}`,
       { headers: { 'Accept-Language': 'en' } }
     )
     const data = await res.json()

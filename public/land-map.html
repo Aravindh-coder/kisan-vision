@@ -312,7 +312,7 @@ async function registerLand() {
 
   try {
     const token = localStorage.getItem('token') || ''
-    const res = await fetch('http://localhost:3001/api/lands/register', {
+    const res = await fetch('https://kisan-vision.onrender.com/api/lands/register', {
       method: 'POST',
       headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+token },
       body: JSON.stringify({ name, phone, email, landName, cropType, polygonCoords, centerLat, centerLon, detectedLocation, lang: localStorage.getItem('kisan_lang') || 'en' })

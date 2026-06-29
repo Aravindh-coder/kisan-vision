@@ -78,7 +78,7 @@ export default function CropDetect() {
         img.onerror = () => { URL.revokeObjectURL(objUrl); rej(new Error('Image load failed')) }
         img.src = objUrl
       })
-      const response = await fetch('http://localhost:3001/api/crop-detect/analyze', {
+      const response = await fetch('https://kisan-vision.onrender.com/api/crop-detect/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ base64, mediaType: 'image/jpeg', farmerName, location, cropAge })

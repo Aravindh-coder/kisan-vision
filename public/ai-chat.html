@@ -138,7 +138,7 @@ function start() {
     "<div class='farm-bar-meta'>Location: " + (farm.location||"N/A") + " | Crop: " + (farm.crop||"Not specified") + " | Farmer: " + (farm.farmer||"") + "</div>";
 
   var token = localStorage.getItem("token") || "";
-  fetch("http://localhost:3001/api/satellite?lat=" + farm.lat + "&lon=" + farm.lon, {
+  fetch("https://kisan-vision.onrender.com/api/satellite?lat=" + farm.lat + "&lon=" + farm.lon, {
     headers: {"Authorization":"Bearer " + token}
   }).then(function(r) { return r.json(); }).then(function(d) {
     sat = d;

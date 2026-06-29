@@ -87,7 +87,7 @@ function goAnalyse(id) {
 function deleteLand(id) {
   if (!confirm('Delete this land permanently?')) return;
   var token = localStorage.getItem('token') || '';
-  fetch('http://localhost:3001/api/lands/' + id, {
+  fetch('https://kisan-vision.onrender.com/api/lands/' + id, {
     method: 'DELETE',
     headers: { 'Authorization': 'Bearer ' + token }
   }).then(function(r) {
@@ -129,7 +129,7 @@ function goAI(id) {
 
 function loadLands() {
   var token = localStorage.getItem('token') || '';
-  fetch('http://localhost:3001/api/lands/all', { headers: { 'Authorization': 'Bearer ' + token } })
+  fetch('https://kisan-vision.onrender.com/api/lands/all', { headers: { 'Authorization': 'Bearer ' + token } })
   .then(function(r) { return r.json(); })
   .then(function(data) {
     allLands = data.lands || [];

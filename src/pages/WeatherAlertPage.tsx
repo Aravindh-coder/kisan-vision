@@ -48,7 +48,7 @@ export default function WeatherAlertPage() {
     btn.style.opacity = '0.7'
     try {
       const token = localStorage.getItem('token') || ''
-      const res = await fetch('http://localhost:3001/api/alerts/subscribe', {
+      const res = await fetch('https://kisan-vision.onrender.com/api/alerts/subscribe', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -199,8 +199,8 @@ export default function Satellite() {
     setPlantRecs('')
     try {
       const [satRes, tsRes] = await Promise.all([
-        axios.get(`http://localhost:3001/api/satellite?lat=${lat}&lon=${lon}`, { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get(`http://localhost:3001/api/satellite/timeseries?lat=${lat}&lon=${lon}`, { headers: { Authorization: `Bearer ${token}` } })
+        axios.get(`https://kisan-vision.onrender.com/api/satellite?lat=${lat}&lon=${lon}`, { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`https://kisan-vision.onrender.com/api/satellite/timeseries?lat=${lat}&lon=${lon}`, { headers: { Authorization: `Bearer ${token}` } })
       ])
       setResult(satRes.data)
       setTimeSeries(tsRes.data.timeSeries || [])

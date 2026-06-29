@@ -37,7 +37,7 @@ export default function Dashboard() {
     try {
       const formData = new FormData()
       formData.append('image', image)
-      const res = await axios.post('http://localhost:3001/api/analyze', formData, {
+      const res = await axios.post('https://kisan-vision.onrender.com/api/analyze', formData, {
         headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${token}` }
       })
       setResult(res.data)

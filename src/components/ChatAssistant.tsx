@@ -50,7 +50,7 @@ export default function ChatAssistant({ satelliteContext }: Props) {
     setInput('')
     setLoading(true)
     try {
-      const res = await axios.post('http://localhost:3001/api/chat',
+      const res = await axios.post('https://kisan-vision.onrender.com/api/chat',
         { message: text, context: satelliteContext || null },
         { headers: { Authorization: `Bearer ${token}` } }
       )

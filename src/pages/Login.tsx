@@ -63,7 +63,7 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      const res = await axios.post('http://localhost:3001/api/auth/login', { email, password })
+      const res = await axios.post('https://kisan-vision.onrender.com/api/auth/login', { email, password })
       login(res.data.token, res.data.user)
       navigate('/satellite')
     } catch {
