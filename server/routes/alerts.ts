@@ -2,7 +2,6 @@ import express from 'express'
 import fs from 'fs'
 import path from 'path'
 import twilio from 'twilio'
-import { Resend } from 'resend'
 
 const router = express.Router()
 const DB_FILE = path.join(__dirname, '../db/subscribers.json')
@@ -73,12 +72,18 @@ Powered by KISAN-VISION 🛰️`
     }
 
     if (email) {
-      const resend = new Resend(process.env.RESEND_API_KEY)
-      await resend.emails.send({
-        from: 'Kisan-Vision <onboarding@resend.dev>',
+      const nodemailer = require('nodemailer')
+      const transporter = nodemailer.createTransport({
+        host: 'smtp.gmail.com',
+        port: 587,
+        secure: false,
+        auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD }
+      })
+      await transporter.sendMail({
+        from: '"Kisan-Vision 🌾" <' + process.env.GMAIL_USER + '>',
         to: email,
         subject: '🌾 KISAN-VISION Daily Report - ' + locationName,
-        html: message.replace(/\n/g, '<br>')
+        text: message
       })
       results.push('Email sent')
     }
