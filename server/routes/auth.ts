@@ -48,3 +48,20 @@ router.get('/test-db', async (req, res) => {
     res.status(500).json({ error: err.message })
   }
 })
+
+router.get('/setup-db', async (req: any, res: any) => {
+  try {
+    const { sql } = await import('drizzle-orm')
+    await db.execute(sql`CREATE TABLE IF NOT EXISTS users (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      email VARCHAR(255) NOT NULL UNIQUE,
+      password VARCHAR(255) NOT NULL,
+      role VARCHAR(50) DEFAULT 'farmer',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`)
+    res.json({ ok: true, message: 'Tables created' })
+  } catch (err: any) {
+    res.status(500).json({ error: err.message })
+  }
+})
