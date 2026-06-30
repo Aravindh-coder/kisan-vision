@@ -66,6 +66,12 @@ export default function Landing() {
               ))}
             </div>
             <button
+              onClick={() => navigate('/hackathon')}
+              className="px-5 py-2 rounded-xl border border-blue-600 text-blue-300 hover:bg-blue-900 transition text-sm font-semibold"
+            >
+              Hackathon Pitch
+            </button>
+            <button
               onClick={() => navigate('/login')}
               className="px-5 py-2 rounded-xl border border-green-700 text-green-400 hover:bg-green-900 transition text-sm font-semibold"
             >

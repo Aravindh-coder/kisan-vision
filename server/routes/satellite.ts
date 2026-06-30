@@ -1,6 +1,7 @@
 import express from 'express'
 import { getWeather } from '../services/weather'
 import { initGEE, getIndices, getTimeSeries, getLandCover, estimateCropType, estimateHarvest } from '../services/gee'
+import { estimateCropTypeML, estimatePhenologyStage } from '../services/cropMl'
 
 const router = express.Router()
 
@@ -82,18 +83,22 @@ router.get('/', async (req, res) => {
       dataSource = 'Sentinel-2 Simulated · OpenWeatherMap'
     }
 
-    const cropEstimate = estimateCropType(landCoverRaw, ndvi)
     const _m = new Date().getMonth() + 1
     const correctedSeason = (_m >= 6 && _m <= 10) ? 'Kharif' : (_m >= 11 || _m <= 3) ? 'Rabi' : 'Zaid'
+    const cropEstimate = estimateCropType(landCoverRaw, ndvi)
     cropEstimate.season = correctedSeason
+    const mlCropEstimate = estimateCropTypeML(timeSeries, ndvi, correctedSeason)
+    const phenology = estimatePhenologyStage(timeSeries, ndvi, mlCropEstimate.cropType)
     const harvestInfo = cropEstimate.isCropland
-      ? estimateHarvest(timeSeries, cropEstimate.likelyCrops?.[0] || 'Rice', correctedSeason)
+      ? estimateHarvest(timeSeries, cropEstimate.likelyCrops?.[0] || mlCropEstimate.cropType || 'Rice', correctedSeason)
       : null
 
     res.json({
       ndvi, ndwi, evi, savi,
       landCover: landCoverRaw,
       cropEstimate,
+      mlCropEstimate,
+      phenology,
       sar: getSAR(humidity, windSpeed),
       advisory: advisory(ndvi, ndwi),
       timeSeries,

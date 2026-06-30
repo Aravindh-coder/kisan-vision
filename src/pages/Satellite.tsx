@@ -393,6 +393,23 @@ export default function Satellite() {
                     <span style={{ color: s.color, fontSize: '12px', fontWeight: 700 }}>{s.value}</span>
                   </div>
                 ))}
+
+                {(result.mlCropEstimate || result.phenology) && (
+                  <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid rgba(74,222,128,0.08)' }}>
+                    {result.mlCropEstimate && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0' }}>
+                        <span style={{ color: '#6b7280', fontSize: '12px' }}>ML Crop Confidence</span>
+                        <span style={{ color: '#93c5fd', fontSize: '12px', fontWeight: 700 }}>{Math.round((result.mlCropEstimate.confidence ?? 0) * 100)}%</span>
+                      </div>
+                    )}
+                    {result.phenology && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0' }}>
+                        <span style={{ color: '#6b7280', fontSize: '12px' }}>Phenology Reliability</span>
+                        <span style={{ color: '#fbbf24', fontSize: '12px', fontWeight: 700 }}>{Math.round((result.phenology.confidence ?? 0) * 100)}%</span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -577,6 +594,31 @@ export default function Satellite() {
                     <div style={{ color: '#fbbf24', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', marginBottom: '10px' }}>🌾 CROP ESTIMATE — {result.cropEstimate.season}</div>
                     <div style={{ color: '#f0fdf4', fontSize: '20px', fontWeight: 800, marginBottom: '4px' }}>{result.cropEstimate.likelyCrops?.join(' · ')}</div>
                     <div style={{ color: '#6b7280', fontSize: '12px' }}>Based on latitude, NDVI and seasonal patterns</div>
+                  </div>
+                )}
+
+                {result.mlCropEstimate && (
+                  <div style={{ background: 'rgba(2,10,2,0.92)', border: '1px solid rgba(96,165,250,0.25)', borderRadius: '16px', padding: '20px', animation: 'fadeUp 0.5s ease 0.36s both' }}>
+                    <div style={{ color: '#93c5fd', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', marginBottom: '10px' }}>🤖 ML CROP CLASSIFICATION</div>
+                    <div style={{ color: '#f0fdf4', fontSize: '20px', fontWeight: 800, marginBottom: '6px' }}>{result.mlCropEstimate.cropType}</div>
+                    <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: '10px' }}>Confidence {Math.round((result.mlCropEstimate.confidence ?? 0) * 100)}% · {result.mlCropEstimate.method}</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
+                      {result.mlCropEstimate.candidates?.map((candidate: string) => (
+                        <span key={candidate} style={{ background: 'rgba(15,23,42,0.75)', color: '#bfdbfe', fontSize: '11px', fontWeight: 700, padding: '6px 10px', borderRadius: '9999px', border: '1px solid rgba(96,165,250,0.15)' }}>
+                          {candidate}
+                        </span>
+                      ))}
+                    </div>
+                    <div style={{ color: '#86efac', fontSize: '11px', lineHeight: 1.6 }}>{result.mlCropEstimate.note}</div>
+                  </div>
+                )}
+
+                {result.phenology && (
+                  <div style={{ background: 'rgba(2,10,2,0.92)', border: '1px solid rgba(251,146,60,0.25)', borderRadius: '16px', padding: '20px', animation: 'fadeUp 0.5s ease 0.37s both' }}>
+                    <div style={{ color: '#fbbf24', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', marginBottom: '10px' }}>🌱 PHENOLOGY STAGE</div>
+                    <div style={{ color: '#f0fdf4', fontSize: '20px', fontWeight: 800, marginBottom: '6px' }}>{result.phenology.stage}</div>
+                    <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: '10px' }}>Confidence {Math.round((result.phenology.confidence ?? 0) * 100)}%</div>
+                    <div style={{ color: '#86efac', fontSize: '11px', lineHeight: 1.6 }}>{result.phenology.message}</div>
                   </div>
                 )}
 

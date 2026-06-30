@@ -1,0 +1,43 @@
+{
+  "generatedAt": "2026-06-30T14:12:14.226Z",
+  "validationProtocol": "80/20 held-out split on class-balanced, synthetic NDVI time-series samples for prototype validation; field-labeled validation is the next step",
+  "models": {
+    "crop": {
+      "classes": [
+        "Rice",
+        "Cotton",
+        "Soybean",
+        "Maize",
+        "Sugarcane",
+        "Wheat",
+        "Mustard",
+        "Gram",
+        "Barley",
+        "Watermelon",
+        "Cucumber",
+        "Moong"
+      ],
+      "samples": 4320,
+      "trainSamples": 3456,
+      "validationSamples": 864,
+      "accuracy": 0.1667,
+      "macroF1": 0.0836,
+      "top3Accuracy": 0.5972
+    },
+    "phenology": {
+      "classes": [
+        "Establishment",
+        "Early Vegetative",
+        "Mid Vegetative",
+        "Flowering",
+        "Maturation"
+      ],
+      "samples": 1000,
+      "trainSamples": 800,
+      "validationSamples": 200,
+      "accuracy": 0.615,
+      "macroF1": 0.5006,
+      "top3Accuracy": 1
+    }
+  }
+}
