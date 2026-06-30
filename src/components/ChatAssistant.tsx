@@ -55,7 +55,7 @@ export default function ChatAssistant({ satelliteContext }: Props) {
         { headers: { Authorization: `Bearer ${token}` } }
       )
       setMessages(prev => [...prev, { role: 'assistant', text: res.data.reply }])
-    } catch (err: any) {
+    } catch {
       setMessages(prev => [...prev, {
         role: 'assistant',
         text: '❌ Connection error. Please check your internet and try again.'

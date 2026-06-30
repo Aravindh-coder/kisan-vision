@@ -4,7 +4,6 @@ import IntroAnimation from '../components/IntroAnimation'
 import { useState } from 'react'
 import { useEffect, useRef } from 'react'
 import { useLang } from '../context/LanguageContext'
-import LangSwitcher from '../components/LangSwitcher'
 
 export default function Landing() {
   const navigate = useNavigate()

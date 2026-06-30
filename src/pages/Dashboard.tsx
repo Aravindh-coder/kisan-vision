@@ -8,10 +8,16 @@ import LangSwitcher from '../components/LangSwitcher'
 export default function Dashboard() {
   const { user, token, logout } = useAuth()
   const navigate = useNavigate()
-  const { lang, setLang, t } = useLang()
+  const { t } = useLang()
   const [image, setImage] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
-  const [result, setResult] = useState<any>(null)
+  const [result, setResult] = useState<{
+    severity: string
+    crop?: string
+    symptoms?: string[]
+    treatment?: string[]
+    prevention?: string[]
+  } | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 

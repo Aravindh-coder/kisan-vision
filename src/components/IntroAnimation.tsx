@@ -151,7 +151,7 @@ export default function IntroAnimation({ onComplete, langText }: Props) {
         mount.removeChild(renderer.domElement)
       }
     }
-  }, [])
+  }, [onComplete])
 
   return (
     <div

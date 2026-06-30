@@ -30,10 +30,12 @@ export default function CropDetect() {
   const [image, setImage] = useState<string | null>(null)
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
+  const [downloading, setDownloading] = useState(false)
   const [report, setReport] = useState<CropReport | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [farmerName, setFarmerName] = useState('')
   const [location, setLocation] = useState('')
+  const [cropType, setCropType] = useState('')
   const [cropAge, setCropAge] = useState('')
 
   const handleFile = (file: File) => {
@@ -52,6 +54,7 @@ export default function CropDetect() {
 
   const analyze = async () => {
     if (!imageFile) return
+    if (!cropType.trim()) { setError('Please enter crop type for better accuracy.'); return }
     setLoading(true); setError(null)
     try {
       const base64 = await new Promise<string>((res, rej) => {
@@ -81,7 +84,7 @@ export default function CropDetect() {
       const response = await fetch('https://kisan-vision.onrender.com/api/crop-detect/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ base64, mediaType: 'image/jpeg', farmerName, location, cropAge })
+        body: JSON.stringify({ base64, mediaType: 'image/jpeg', farmerName, location, cropType, cropAge })
       })
       if (!response.ok) throw new Error('Server error')
       const parsed = await response.json()
@@ -90,9 +93,36 @@ export default function CropDetect() {
     setLoading(false)
   }
 
+  const downloadPdfReport = async () => {
+    if (!report) return
+    setDownloading(true)
+    try {
+      const response = await fetch('https://kisan-vision.onrender.com/api/crop-detect/report-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ report })
+      })
+      if (!response.ok) throw new Error('PDF generation failed')
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `crop-report-${(report.cropType||'report').replace(/\s+/g,'_').toLowerCase()}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      setError('Could not download PDF. Please try again.')
+      console.error(e)
+    }
+    setDownloading(false)
+  }
+
   const statusColor = (s: HealthStatus) => s==='HEALTHY'?'#4ade80':s==='WARNING'?'#fbbf24':'#ef4444'
   const statusEmoji = (s: HealthStatus) => s==='HEALTHY'?'🟢':s==='WARNING'?'🟡':'🔴'
   const statusBg = (s: HealthStatus) => s==='HEALTHY'?'rgba(74,222,128,0.08)':s==='WARNING'?'rgba(251,191,36,0.08)':'rgba(239,68,68,0.08)'
+  const reportId = 'KV-REPORT'
   const statusBorder = (s: HealthStatus) => s==='HEALTHY'?'rgba(74,222,128,0.3)':s==='WARNING'?'rgba(251,191,36,0.3)':'rgba(239,68,68,0.3)'
 
   return (
@@ -134,9 +164,10 @@ export default function CropDetect() {
         </div>
 
         <div style={{animation:'fadeUp 0.5s ease 0.1s both'}}>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'12px',marginBottom:'20px'}}>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(4, minmax(0,1fr))',gap:'12px',marginBottom:'20px'}}>
             {[{label:'Farmer Name',val:farmerName,set:setFarmerName,ph:'e.g. Rajan Kumar'},
               {label:'Field Location',val:location,set:setLocation,ph:'e.g. Thanjavur, TN'},
+              {label:'Crop Type',val:cropType,set:setCropType,ph:'e.g. Rice, Cotton'},
               {label:'Crop Age',val:cropAge,set:setCropAge,ph:'e.g. 45 days old'}].map(f=>(
               <div key={f.label}>
                 <label style={{display:'block',fontSize:'11px',fontWeight:700,color:COLORS.green,marginBottom:'6px',letterSpacing:'0.08em'}}>{f.label.toUpperCase()}</label>
@@ -181,7 +212,10 @@ export default function CropDetect() {
                   <div style={{fontSize:'22px',fontWeight:900,marginBottom:'4px'}}>{report.cropType}</div>
                   <div style={{color:COLORS.muted,fontSize:'13px'}}>Generated on {new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'long',year:'numeric'})}</div>
                 </div>
-                <button className="no-print" onClick={()=>window.print()} style={{background:'rgba(74,222,128,0.1)',border:`1px solid ${COLORS.border}`,borderRadius:'10px',padding:'8px 16px',color:COLORS.green,fontSize:'13px',fontWeight:700,cursor:'pointer'}}>🖨️ Print Report</button>
+                <div style={{display:'flex',gap:'10px',flexWrap:'wrap'}}>
+                  <button className="no-print" onClick={()=>window.print()} style={{background:'rgba(74,222,128,0.1)',border:`1px solid ${COLORS.border}`,borderRadius:'10px',padding:'8px 16px',color:COLORS.green,fontSize:'13px',fontWeight:700,cursor:'pointer'}}>🖨️ Print Report</button>
+                  <button className="no-print" onClick={downloadPdfReport} disabled={downloading} style={{background:downloading?'rgba(22,163,74,0.4)':'rgba(74,222,128,0.1)',border:`1px solid ${COLORS.border}`,borderRadius:'10px',padding:'8px 16px',color:COLORS.green,fontSize:'13px',fontWeight:700,cursor:downloading?'not-allowed':'pointer'}}>{downloading ? 'Generating PDF...' : '📄 Download PDF Report'}</button>
+                </div>
               </div>
             </div>
 
@@ -271,7 +305,7 @@ export default function CropDetect() {
               </div>
               <div style={{marginTop:'20px',paddingTop:'16px',borderTop:`1px solid ${COLORS.border}`,display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:'8px'}}>
                 <div style={{fontSize:'11px',color:COLORS.muted}}>🛰️ KISAN-VISION · Powered by Claude AI + Sentinel-2</div>
-                <div style={{fontSize:'11px',color:COLORS.muted}}>Report ID: KV-{Date.now().toString(36).toUpperCase()}</div>
+                <div style={{fontSize:'11px',color:COLORS.muted}}>Report ID: {reportId}</div>
               </div>
             </div>
           </div>

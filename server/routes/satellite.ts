@@ -1,6 +1,6 @@
 import express from 'express'
 import { getWeather } from '../services/weather'
-import { initGEE, getIndices, getTimeSeries, getLandCover, estimateCropType, estimateHarvest } from '../services/gee'
+import { initGEE, getTimeSeries, getLandCover, estimateCropType, estimateHarvest, getSentinel1Indices, getSentinel2Indices, getLandsatIndices, getMultiSourceTimeSeries } from '../services/gee'
 import { estimateCropTypeML, estimatePhenologyStage } from '../services/cropMl'
 
 const router = express.Router()
@@ -23,9 +23,58 @@ function getSAR(humidity: number, windSpeed: number) {
   return { backscatter, soilMoisture: humidity > 60 ? 'Moist' : 'Dry', surfaceType: 'Vegetated', coherence: 0.72 }
 }
 
-function advisory(ndvi: number, ndwi: number) {
+function fuseMultiSourceIndices(sentinel2: any, landsat: any, sentinel1: any, humidity: number) {
+  const opticalSources: any[] = []
+  if (sentinel2) opticalSources.push({ name: 'Sentinel-2', ...sentinel2 })
+  if (landsat) opticalSources.push({ name: 'Landsat-8', ...landsat })
+
+  const averages = {
+    ndvi: null as number | null,
+    ndwi: null as number | null,
+    evi: null as number | null,
+    savi: null as number | null
+  }
+
+  const availableOptical = opticalSources.filter(src => src && src.ndvi != null)
+  if (availableOptical.length > 0) {
+    averages.ndvi = parseFloat((availableOptical.reduce((sum, src) => sum + src.ndvi, 0) / availableOptical.length).toFixed(3))
+    averages.ndwi = parseFloat((availableOptical.reduce((sum, src) => sum + (src.ndwi || 0), 0) / availableOptical.length).toFixed(3))
+    averages.evi = parseFloat((availableOptical.reduce((sum, src) => sum + (src.evi || 0), 0) / availableOptical.length).toFixed(3))
+    averages.savi = parseFloat((availableOptical.reduce((sum, src) => sum + (src.savi || 0), 0) / availableOptical.length).toFixed(3))
+  }
+
+  const sar = sentinel1 ? {
+    vv: sentinel1.vv,
+    vh: sentinel1.vh,
+    vhvv: sentinel1.vhvv,
+    backscatter: sentinel1.backscatter,
+    soilMoisture: sentinel1.soilMoisture,
+    source: 'Sentinel-1'
+  } : null
+
+  const opticalSourceNames = availableOptical.map(src => src.name)
+  const dataSource = opticalSourceNames.length > 0 ? opticalSourceNames.join(' + ') : 'Optical fallback only'
+
+  const moistureIndicator = sar?.soilMoisture || (humidity > 60 ? 'Moist' : 'Dry')
+
+  return {
+    ...averages,
+    sar,
+    moistureIndicator,
+    dataSource,
+    fusion: {
+      method: 'optical-sar-fusion',
+      sources: [...opticalSourceNames, sar ? 'Sentinel-1' : 'SAR fallback'],
+      description: 'Fused optical vegetation indices with SAR backscatter and soil moisture signals.'
+    }
+  }
+}
+
+function advisory(ndvi: number, ndwi: number, sar: any) {
+  const soilMoisture = sar?.soilMoisture
+  const dryCondition = soilMoisture === 'Dry' || (typeof soilMoisture === 'number' && soilMoisture < 0.25)
   if (ndvi < 0.2) return { status: 'Poor Vegetation', message: 'Low vegetation health. Check for crop stress.' }
-  if (ndwi < -0.2) return { status: 'Water Stress', message: 'Low moisture detected. Irrigation recommended.' }
+  if (ndwi < -0.2 || dryCondition) return { status: 'Water Stress', message: 'Low moisture detected. Irrigation recommended.' }
   if (ndvi < 0.5) return { status: 'Moderate Health', message: 'Vegetation is moderately healthy. Monitor closely.' }
   return { status: 'Healthy', message: 'Vegetation appears healthy with adequate moisture.' }
 }
@@ -49,18 +98,27 @@ router.get('/', async (req, res) => {
     let dataSource: string
 
     try {
-      const [geeIndices, geeSeries, geeLand] = await Promise.all([
-        getIndices(lat, lon),
-        getTimeSeries(lat, lon, 6),
+      const [s2Result, landsatResult, s1Result, seriesResult, landCoverResult] = await Promise.allSettled([
+        getSentinel2Indices(lat, lon),
+        getLandsatIndices(lat, lon),
+        getSentinel1Indices(lat, lon),
+        getMultiSourceTimeSeries(lat, lon, 6),
         getLandCover(lat, lon)
       ])
 
-      ndvi = parseFloat((geeIndices.ndvi ?? 0.3).toFixed(3))
-      ndwi = parseFloat((geeIndices.ndwi ?? 0.0).toFixed(3))
-      evi  = parseFloat((geeIndices.evi  ?? ndvi * 0.85).toFixed(3))
-      savi = parseFloat((ndvi * 1.05).toFixed(3))
-      timeSeries = geeSeries.map((p: any) => ({ month: p.month, ndvi: p.ndvi != null ? parseFloat(p.ndvi.toFixed(3)) : null }))
-      // If DW had no coverage, infer from NDVI
+      const sentinel2 = s2Result.status === 'fulfilled' ? s2Result.value : null
+      const landsat = landsatResult.status === 'fulfilled' ? landsatResult.value : null
+      const sentinel1 = s1Result.status === 'fulfilled' ? s1Result.value : null
+      const geeSeries = seriesResult.status === 'fulfilled' ? seriesResult.value : []
+      const geeLand = landCoverResult.status === 'fulfilled' ? landCoverResult.value : 'unknown'
+
+      const fused = fuseMultiSourceIndices(sentinel2, landsat, sentinel1, humidity)
+      ndvi = fused.ndvi ?? sentinel2?.ndvi ?? landsat?.ndvi ?? 0.3
+      ndwi = fused.ndwi ?? sentinel2?.ndwi ?? landsat?.ndwi ?? 0.0
+      evi  = fused.evi ?? sentinel2?.evi ?? landsat?.evi ?? parseFloat((ndvi * 0.85).toFixed(3))
+      savi = fused.savi ?? sentinel2?.savi ?? landsat?.savi ?? parseFloat((ndvi * 1.05).toFixed(3))
+      timeSeries = geeSeries.map((p: any) => ({ month: p.month, ndvi: p.ndvi != null ? parseFloat(p.ndvi.toFixed(3)) : null, vhvv: p.vhvv || null }))
+
       if (geeLand === 'no_data' || geeLand === 'unknown') {
         if (ndvi > 0.4) landCoverRaw = 'crops'
         else if (ndvi > 0.25) landCoverRaw = 'grass'
@@ -69,7 +127,9 @@ router.get('/', async (req, res) => {
       } else {
         landCoverRaw = geeLand
       }
-      dataSource = 'Sentinel-2 · Google Earth Engine'
+
+      dataSource = `${fused.dataSource}${sentinel1 ? ' + Sentinel-1' : ''} · Google Earth Engine`
+      if (s1Result.status !== 'fulfilled') dataSource += ' (SAR fallback)'
     } catch (geeErr: any) {
       console.warn('GEE call failed, using fallback:', geeErr?.message?.slice(0, 80))
       const fb = calcIndicesFallback(lat, lon, humidity)
@@ -77,7 +137,8 @@ router.get('/', async (req, res) => {
       const months = ['Jan','Feb','Mar','Apr','May','Jun']
       timeSeries = months.map((month, i) => ({
         month,
-        ndvi: parseFloat(Math.min(0.9, Math.max(0.05, ndvi - 0.15 + i * 0.05 + Math.random() * 0.1)).toFixed(3))
+        ndvi: parseFloat(Math.min(0.9, Math.max(0.05, ndvi - 0.15 + i * 0.05 + Math.random() * 0.1)).toFixed(3)),
+        vhvv: null
       }))
       landCoverRaw = 'unknown'
       dataSource = 'Sentinel-2 Simulated · OpenWeatherMap'
@@ -93,18 +154,31 @@ router.get('/', async (req, res) => {
       ? estimateHarvest(timeSeries, cropEstimate.likelyCrops?.[0] || mlCropEstimate.cropType || 'Rice', correctedSeason)
       : null
 
+    const fusedSAR = await (async () => {
+      try {
+        const s1 = await getSentinel1Indices(lat, lon)
+        return s1
+      } catch {
+        return null
+      }
+    })()
+
     res.json({
       ndvi, ndwi, evi, savi,
       landCover: landCoverRaw,
       cropEstimate,
       mlCropEstimate,
       phenology,
-      sar: getSAR(humidity, windSpeed),
-      advisory: advisory(ndvi, ndwi),
+      sar: fusedSAR || getSAR(humidity, windSpeed),
+      advisory: advisory(ndvi, ndwi, fusedSAR),
       timeSeries,
       weather: { temp, humidity, wind_speed: windSpeed, description: weatherDesc, pressure: weatherRaw?.main?.pressure || 1013, rain: weatherRaw?.rain?.["1h"] || 0, feels_like: weatherRaw?.main?.feels_like || temp - 2 },
       harvest: harvestInfo,
       source: dataSource,
+      fusion: {
+        method: 'multi-source SAR/optical fusion',
+        detail: 'Sentinel-2, Landsat-8, and Sentinel-1 indexes fused to improve crop and moisture analysis.',
+      },
       timestamp: new Date().toISOString()
     })
   } catch (err: any) {

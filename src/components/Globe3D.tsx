@@ -250,7 +250,7 @@ export default function Globe3D({ onLocationSelect }: Props) {
       cancelAnimationFrame(animId)
       mount.removeChild(renderer.domElement)
     }
-  }, [])
+  }, [onLocationSelect])
 
   return (
     <div ref={mountRef} style={{ width: '100%', height: '500px', cursor: 'grab', position: 'relative' }}>

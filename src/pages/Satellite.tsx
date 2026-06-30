@@ -1,18 +1,73 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import axios from 'axios'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { Country, State, City } from 'country-state-city'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts'
+import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts'
 import Globe3D from '../components/Globe3D'
 import { useAuth } from '../context/AuthContext'
 import { useLang } from '../context/LanguageContext'
 import LangSwitcher from '../components/LangSwitcher'
-import { memo } from 'react'
 
-delete (L.Icon.Default.prototype as any)._getIconUrl
+interface SatelliteResult {
+  ndvi?: number
+  ndwi?: number
+  evi?: number
+  savi?: number
+  source?: string
+  landCover?: string
+  advisory?: { status?: string; message?: string }
+  cropEstimate?: {
+    likelyCrops?: string[]
+    isCropland?: boolean
+    season?: string
+  }
+  mlCropEstimate?: {
+    cropType?: string
+    confidence?: number
+    method?: string
+    candidates?: string[]
+    note?: string
+  }
+  phenology?: {
+    stage?: string
+    confidence?: number
+    message?: string
+  }
+  sar?: {
+    backscatter?: number
+    soilMoisture?: number
+    coherence?: number
+  }
+  weather?: {
+    temp?: number
+    humidity?: number
+    wind_speed?: number
+    feels_like?: number
+    description?: string
+    rain?: number
+    pressure?: number
+  }
+  harvest?: {
+    estimatedHarvestDate?: string
+    estimatedDays?: number
+    crop?: string
+    message?: string
+  }
+}
+
+interface MetricCardProps {
+  icon: React.ReactNode
+  label: string
+  value: string | number
+  sub?: string
+  color: string
+  delay?: number
+}
+
+delete ((L.Icon.Default.prototype as unknown) as { _getIconUrl?: unknown })._getIconUrl
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
@@ -21,54 +76,73 @@ L.Icon.Default.mergeOptions({
 
 function MapFlyTo({ center }: { center: [number, number] }) {
   const map = useMap()
-  useEffect(() => { map.flyTo(center, 10, { duration: 1.5 }) }, [center.toString()])
+  const centerKey = center.join(',')
+  useEffect(() => {
+    map.flyTo(center, 10, { duration: 1.5 })
+  }, [map, center, centerKey])
   return null
 }
 
 // AI GIRL ASSISTANT
-function AIGirl({ result, onAsk, lang }: { result: any; onAsk: (q: string) => void; lang?: string }) {
+function AIGirl({ result, lang }: { result?: SatelliteResult | null; lang?: string }) {
   const userLang = lang || 'en'
-  const [msg, setMsg] = useState(userLang === 'hi' ? 'नमस्ते! मैं KISAN AI हूं 🌾 ग्लोब पर कोई स्थान चुनें!' : userLang === 'ta' ? 'வணக்கம்! நான் KISAN AI 🌾 கோளத்தில் ஒரு இடத்தை தேர்ந்தெடுங்கள்!' : "Hello! I'm KISAN AI 🌾 Select a location on the globe or map and I'll analyze your land with satellite data!")
+  const [manualMsg, setManualMsg] = useState('')
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [expanded, setExpanded] = useState(true)
 
-  useEffect(() => {
-    if (result) {
-      const ndvi = result.ndvi
-      const harvest = result.harvest?.estimatedHarvestDate
-      const adv = result.advisory?.message || ''
-      const hs = harvest ? (
-        userLang==='hi' ? `कटाई अनुमानित: ${harvest}. ` :
-        userLang==='ta' ? `அறுவடை தேதி: ${harvest}. ` :
-        `Harvest expected around ${harvest}. `
-      ) : ''
-      if (ndvi > 0.6) setMsg(
-        userLang==='hi'
-          ? `उत्कृष्ट फसल स्वास्थ्य! 🌿 NDVI ${ndvi} — वनस्पति घनी और स्वस्थ। ${hs}कुछ भी पूछें!`
-          : userLang==='ta'
-          ? `சிறப்பான பயிர் ஆரோக்கியம்! 🌿 NDVI ${ndvi} — தாவரம் அடர்த்தியாக உள்ளது. ${hs}எதையும் கேளுங்கள்!`
-          : `Excellent crop health! 🌿 NDVI ${ndvi} — vegetation is dense and thriving. ${hs}Ask me anything!`)
-      else if (ndvi > 0.4) setMsg(
-        userLang==='hi'
-          ? `अच्छी वनस्पति 🌱 NDVI ${ndvi} मध्यम स्वास्थ्य। ${adv} क्या जानना चाहते हैं?`
-          : userLang==='ta'
-          ? `நல்ல தாவரம் 🌱 NDVI ${ndvi} மிதமான ஆரோக்கியம். ${adv} என்ன கேட்க விரும்புகிறீர்கள்?`
-          : `Good vegetation 🌱 NDVI ${ndvi} shows moderate health. ${adv} What would you like to know?`)
-      else if (ndvi > 0.2) setMsg(
-        userLang==='hi'
-          ? `⚠️ वनस्पति तनाव! NDVI ${ndvi} इष्टतम से नीचे। ${adv} तुरंत ध्यान दें!`
-          : userLang==='ta'
-          ? `⚠️ தாவர அழுத்தம்! NDVI ${ndvi} உகந்த அளவுக்கு கீழே. ${adv} உடனடி கவனம் தேவை!`
-          : `⚠️ Vegetation stress! NDVI ${ndvi} below optimal. ${adv} Immediate attention needed!`)
-      else setMsg(
-        userLang==='hi'
-          ? `🚨 गंभीर! NDVI ${ndvi} — बहुत कम वनस्पति। ${adv} तुरंत कार्रवाई करें!`
-          : userLang==='ta'
-          ? `🚨 ஆபத்து! NDVI ${ndvi} — மிகவும் குறைந்த தாவரம். ${adv} உடனடி நடவடிக்கை எடுங்கள்!`
-          : `🚨 Critical! NDVI ${ndvi} — very low vegetation. ${adv} Please take immediate action!`)
+  const autoMsg = useMemo(() => {
+    if (!result) {
+      return userLang === 'hi'
+        ? 'नमस्ते! मैं KISAN AI हूं 🌾 ग्लोब पर कोई स्थान चुनें!'
+        : userLang === 'ta'
+        ? 'வணக்கம்! நான் KISAN AI 🌾 கோளத்தில் ஒரு இடத்தை தேர்ந்தெடுங்கள்!'
+        : "Hello! I'm KISAN AI 🌾 Select a location on the globe or map and I'll analyze your land with satellite data!"
     }
+
+    const ndvi = result.ndvi ?? 0
+    const harvest = result.harvest?.estimatedHarvestDate
+    const adv = result.advisory?.message || ''
+    const hs = harvest
+      ? userLang === 'hi'
+        ? `कटाई अनुमानित: ${harvest}. `
+        : userLang === 'ta'
+        ? `அறுவடை தேதி: ${harvest}. `
+        : `Harvest expected around ${harvest}. `
+      : ''
+
+    if (ndvi > 0.6) {
+      return userLang === 'hi'
+        ? `उत्कृष्ट फसल स्वास्थ्य! 🌿 NDVI ${ndvi} — वनस्पति घनी और स्वस्थ। ${hs}कुछ भी पूछें!`
+        : userLang === 'ta'
+        ? `சிறப்பான பயிர் ஆரோக்கியம்! 🌿 NDVI ${ndvi} — தாவரம் அடர்த்தியாக உள்ளது. ${hs}எதையும் கேளுங்கள்!`
+        : `Excellent crop health! 🌿 NDVI ${ndvi} — vegetation is dense and thriving. ${hs}Ask me anything!`
+    }
+
+    if (ndvi > 0.4) {
+      return userLang === 'hi'
+        ? `अच्छी वनस्पति 🌱 NDVI ${ndvi} मध्यम स्वास्थ्य। ${adv} क्या जानना चाहते हैं?`
+        : userLang === 'ta'
+        ? `நல்ல தாவரம் 🌱 NDVI ${ndvi} மிதமான ஆரோக்கியம். ${adv} என்ன கேட்க விரும்புகிறீர்கள்?`
+        : `Good vegetation 🌱 NDVI ${ndvi} shows moderate health. ${adv} What would you like to know?`
+    }
+
+    if (ndvi > 0.2) {
+      return userLang === 'hi'
+        ? `⚠️ वनस्पति तनाव! NDVI ${ndvi} इष्टतम से नीचे। ${adv} तुरंत ध्यान दें!`
+        : userLang === 'ta'
+        ? `⚠️ தாவர அழுத்தம்! NDVI ${ndvi} உகந்த அளவுக்கு கீழே. ${adv} உடனடி கவனம் தேவை!`
+        : `⚠️ Vegetation stress! NDVI ${ndvi} below optimal. ${adv} Immediate attention needed!`
+    }
+
+    return userLang === 'hi'
+      ? `🚨 गंभीर! NDVI ${ndvi} — बहुत कम वनस्पति। ${adv} तुरंत कार्रवाई करें!`
+      : userLang === 'ta'
+      ? `🚨 ஆபத்து! NDVI ${ndvi} — மிகவும் குறைந்த தாவரம். ${adv} உடனடி நடவடிக்கை எடுங்கள்!`
+      : `🚨 Critical! NDVI ${ndvi} — very low vegetation. ${adv} Please take immediate action!`
   }, [result, userLang])
+
+  const displayedMsg = manualMsg || autoMsg
 
   const ask = async () => {
     if (!input.trim()) return
@@ -83,9 +157,11 @@ function AIGirl({ result, onAsk, lang }: { result: any; onAsk: (q: string) => vo
         body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'system', content: 'You are KISAN AI, expert agricultural scientist for Indian farming. Give detailed, actionable advice.' }, { role: 'user', content: 'Satellite data context: ' + context + '\n\nQuestion: ' + q }], max_tokens: 800, temperature: 0.7 })
       })
       const groqData = await groqRes.json()
-      setMsg(groqData.choices?.[0]?.message?.content || 'I could not process that. Please try again.')
-    } catch {
-      setMsg('Connection error. But based on the satellite data I can see — ' + (result ? `NDVI is ${result.ndvi}, indicating ${result.advisory?.status}.` : 'please select a location first.'))
+      setManualMsg(groqData.choices?.[0]?.message?.content || 'I could not process that. Please try again.')
+    } catch (unknownError) {
+      const error = unknownError as Error
+      console.error(error)
+      setManualMsg('Connection error. But based on the satellite data I can see — ' + (result ? `NDVI is ${result.ndvi}, indicating ${result.advisory?.status}.` : 'please select a location first.'))
     }
     setLoading(false)
   }
@@ -107,7 +183,7 @@ function AIGirl({ result, onAsk, lang }: { result: any; onAsk: (q: string) => vo
             <button onClick={() => setExpanded(false)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#365f45', cursor: 'pointer', fontSize: '16px' }}>×</button>
           </div>
           <div style={{ background: 'rgba(22,101,52,0.15)', border: '1px solid rgba(74,222,128,0.1)', borderRadius: '12px', padding: '12px', marginBottom: '12px', minHeight: '80px', maxHeight: '280px', overflowY: 'auto' }}>
-            <p style={{ color: '#d1fae5', fontSize: '13px', lineHeight: 1.7, margin: 0, whiteSpace: 'pre-wrap' }}>{loading ? '🔍 Analyzing with Gemini AI...' : msg}</p>
+            <p style={{ color: '#d1fae5', fontSize: '13px', lineHeight: 1.7, margin: 0, whiteSpace: 'pre-wrap' }}>{loading ? '🔍 Analyzing with Gemini AI...' : displayedMsg}</p>
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
             <input
@@ -148,7 +224,7 @@ function AIGirl({ result, onAsk, lang }: { result: any; onAsk: (q: string) => vo
 }
 
 // ANIMATED METRIC CARD
-function MetricCard({ icon, label, value, sub, color, delay = 0 }: any) {
+function MetricCard({ icon, label, value, sub, color, delay = 0 }: MetricCardProps) {
   return (
     <div style={{
       background: 'rgba(2,10,2,0.88)', border: `1px solid ${color}30`,
@@ -176,8 +252,8 @@ export default function Satellite() {
   const [flyTo, setFlyTo] = useState<[number, number] | null>(null)
   const [view, setView] = useState<'globe' | 'map'>('globe')
   const [marker, setMarker] = useState<{ lat: number; lon: number } | null>(null)
-  const [result, setResult] = useState<any>(null)
-  const [timeSeries, setTimeSeries] = useState<any[]>([])
+  const [result, setResult] = useState<SatelliteResult | null>(null)
+  const [timeSeries, setTimeSeries] = useState<Array<{ month: string; ndvi: number | null; vhvv?: number | null }>>([])
   const [plantRecs, setPlantRecs] = useState<string>('')
   const [plantRecsLoading, setPlantRecsLoading] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -204,8 +280,9 @@ export default function Satellite() {
       ])
       setResult(satRes.data)
       setTimeSeries(tsRes.data.timeSeries || [])
-    } catch (e: any) {
-      setError(e.response?.data?.error || 'Analysis failed')
+    } catch (unknownError) {
+      const err = unknownError as { response?: { data?: { error?: string } } }
+      setError(err.response?.data?.error || 'Analysis failed')
     }
     setLoading(false)
   }
@@ -367,8 +444,8 @@ export default function Satellite() {
             <div style={{ background: 'rgba(2,10,2,0.88)', border: '1px solid rgba(74,222,128,0.2)', borderRadius: '16px', padding: '16px', backdropFilter: 'blur(20px)', animation: 'fadeUp 0.5s ease 0.2s both' }}>
               <div style={{ color: '#4ade80', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', marginBottom: '10px' }}>🌍 MAP MODE</div>
               <div style={{ display: 'flex', gap: '8px' }}>
-                {['globe', 'map'].map(v => (
-                  <button key={v} onClick={() => setView(v as any)} style={{
+                {(['globe', 'map'] as const).map(v => (
+                  <button key={v} onClick={() => setView(v)} style={{
                     flex: 1, padding: '10px', borderRadius: '10px', fontSize: '13px', fontWeight: 700, cursor: 'pointer', border: 'none',
                     background: view === v ? '#16a34a' : 'rgba(0,0,0,0.4)', color: view === v ? '#fff' : '#6b7280', transition: 'all 0.2s'
                   }}>
@@ -663,7 +740,10 @@ export default function Satellite() {
                       const _gd = await _gr.json()
                       if (_gd.error) throw new Error(_gd.error.message)
                       setPlantRecs(_gd.choices[0].message.content)
-                    } catch(e: any) { setPlantRecs('Error: ' + e.message) }
+                    } catch (unknownError) {
+                      const e = unknownError as Error
+                      setPlantRecs('Error: ' + e.message)
+                    }
                     setPlantRecsLoading(false)
                   }}
                   disabled={plantRecsLoading}

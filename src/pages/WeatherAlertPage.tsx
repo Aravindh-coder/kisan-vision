@@ -12,7 +12,6 @@ export default function WeatherAlertPage() {
   const [lat, setLat] = useState<number>(13.0827)
   const [lon, setLon] = useState<number>(80.2707)
   const [locationName, setLocationName] = useState<string>('')
-  const [locationQuery, setLocationQuery] = useState<string>('')
   const [locationSearching, setLocationSearching] = useState(false)
   const [locationConfirmed, setLocationConfirmed] = useState(false)
 
@@ -27,7 +26,6 @@ export default function WeatherAlertPage() {
         setLat(parseFloat(data[0].lat))
         setLon(parseFloat(data[0].lon))
         setLocationName(data[0].display_name.split(',').slice(0,2).join(', '))
-        setLocationQuery(q)
         setLocationConfirmed(true)
       } else {
         alert('Location not found. Try being more specific (e.g. "Warangal, Telangana")')

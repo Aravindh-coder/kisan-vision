@@ -244,7 +244,7 @@ async function sendReport() {
     var data = await res.json();
     if (data.success) {
       document.getElementById('success-title').textContent = 'Subscribed!';
-      document.getElementById('success-msg').textContent = 'First report sent! Daily reports every morning at 6 AM. Reply STOP to WhatsApp to unsubscribe.';
+      document.getElementById('success-msg').textContent = data.message || 'First report sent! Daily reports every morning at 6 AM. Reply STOP to WhatsApp to unsubscribe.';
       document.getElementById('success-box').style.display = 'flex';
       btn.textContent = '✅ Subscribed!';
       btn.style.background = '#065f46';

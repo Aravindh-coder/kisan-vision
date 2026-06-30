@@ -317,7 +317,11 @@ async function registerLand() {
     const data = await res.json()
     if (data.success) {
       document.getElementById('success-box').style.display = 'flex'
-      document.getElementById('success-details').textContent = '📧 ' + email + '\n📍 ' + (detectedLocation || 'Your land')
+      let detailText = '📧 ' + email + '\n📍 ' + (detectedLocation || 'Your land')
+      if (data.details && data.details.length) {
+        detailText += '\n' + data.details.join(' • ')
+      }
+      document.getElementById('success-details').textContent = detailText
       btn.textContent = '✅ Registered!'
         setTimeout(() => { window.location.href = '/my-lands.html?email=' + encodeURIComponent(email) }, 1500)
         setTimeout(() => { window.location.href = '/my-lands.html?email=' + encodeURIComponent(email) }, 1500)

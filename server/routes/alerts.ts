@@ -2,9 +2,25 @@ import express from 'express'
 import fs from 'fs'
 import path from 'path'
 import twilio from 'twilio'
+import nodemailer from 'nodemailer'
+import dotenv from 'dotenv'
+dotenv.config()
 
 const router = express.Router()
 const DB_FILE = path.join(__dirname, '../db/subscribers.json')
+
+const alertTransporter = process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD
+  ? nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 587,
+      secure: false,
+      auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD }
+    })
+  : null
+
+const twilioClient = process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN
+  ? twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN)
+  : null
 
 function saveSubscriber(data: any) {
   try {
@@ -61,8 +77,7 @@ Powered by KISAN-VISION 🛰️`
 
     const results: string[] = []
 
-    if (phone) {
-      const twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN)
+    if (phone && twilioClient) {
       await twilioClient.messages.create({
         from: process.env.TWILIO_WHATSAPP_FROM,
         to: `whatsapp:${phone}`,
@@ -71,15 +86,8 @@ Powered by KISAN-VISION 🛰️`
       results.push('WhatsApp sent')
     }
 
-    if (email) {
-      const nodemailer = require('nodemailer')
-      const transporter = nodemailer.createTransport({
-        host: 'smtp.gmail.com',
-        port: 587,
-        secure: false,
-        auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD }
-      })
-      await transporter.sendMail({
+    if (email && alertTransporter) {
+      await alertTransporter.sendMail({
         from: '"Kisan-Vision 🌾" <' + process.env.GMAIL_USER + '>',
         to: email,
         subject: '🌾 KISAN-VISION Daily Report - ' + locationName,
