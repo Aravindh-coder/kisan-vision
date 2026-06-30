@@ -111,39 +111,42 @@ We will share daily satellite reports to ${email}.`
     }
 
     res.json({ success: true, message: 'Land registered successfully', details: results })
-  } catch (err: any) {
-    console.error('Land register error:', err?.message)
-    res.status(500).json({ error: 'Registration failed: ' + err?.message })
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Registration failed'
+    console.error('Land register error:', message)
+    res.status(500).json({ error: 'Registration failed: ' + message })
   }
 })
 
-router.get('/all', async (req: any, res: any) => {
+router.get('/all', async (_req, res) => {
   try {
     const lands = await db.execute(sql`SELECT * FROM lands ORDER BY created_at DESC`)
     res.json({ success: true, lands: lands[0] })
-  } catch (err: any) {
+  } catch {
     res.status(500).json({ error: 'Failed to fetch lands' })
   }
 })
 
-router.post('/send-reports', async (req, res) => {
+router.post('/send-reports', async (_req, res) => {
   try {
     const { sendDailyReports } = await import('../services/dailyReport')
     await sendDailyReports()
     res.json({ success: true, message: 'Reports sent' })
-  } catch(err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to send reports'
+    res.status(500).json({ error: message })
   }
 })
 
 export default router
 
-router.delete('/:id', async (req: any, res: any) => {
+router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params
     await db.execute(sql`DELETE FROM lands WHERE id = ${id}`)
     res.json({ success: true })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to delete land'
+    res.status(500).json({ error: message })
   }
 })

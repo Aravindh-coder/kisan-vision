@@ -34,7 +34,6 @@ router.post('/pdf', async (req, res) => {
 
     let y = 110
     const left = 50
-    const colWidth = 240
 
     // Location block
     doc.fontSize(14).font('Helvetica-Bold').fillColor('#14532d').text(`Location: ${location || 'Unknown'}`, left, y)

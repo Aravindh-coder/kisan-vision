@@ -46,13 +46,18 @@ function getSmartAnswer(question: string, context: string, lang: string): string
   }
 
   // Match question to topic
-  let topic = 'ndvi'
-  if (q.includes('irrigat') || q.includes('water') || q.includes('सिंचाई') || q.includes('நீர்')) topic = 'irrigat'
-  else if (q.includes('diseas') || q.includes('pest') || q.includes('रोग') || q.includes('நோய்')) topic = 'diseas'
-  else if (q.includes('fertil') || q.includes('उर्वरक') || q.includes('உரம்')) topic = 'fertil'
-  else if (q.includes('harvest') || q.includes('कटाई') || q.includes('அறுவடை')) topic = 'harvest'
-  else if (q.includes('ndvi') || q.includes('vegetation') || q.includes('वनस्पति')) topic = 'ndvi'
-  else {
+  const topic = q.includes('irrigat') || q.includes('water') || q.includes('सिंचाई') || q.includes('நீர்')
+    ? 'irrigat'
+    : q.includes('diseas') || q.includes('pest') || q.includes('रोग') || q.includes('நோய்')
+      ? 'diseas'
+      : q.includes('fertil') || q.includes('उर्वरक') || q.includes('உரம்')
+        ? 'fertil'
+        : q.includes('harvest') || q.includes('कटाई') || q.includes('அறுவடை')
+          ? 'harvest'
+          : q.includes('ndvi') || q.includes('vegetation') || q.includes('वनस्पति')
+            ? 'ndvi'
+            : 'ndvi'
+  if (topic === 'ndvi' && !q.includes('ndvi') && !q.includes('vegetation') && !q.includes('वनस्पति') && !q.includes('irrigat') && !q.includes('water') && !q.includes('सिंचाई') && !q.includes('நீர்') && !q.includes('diseas') && !q.includes('pest') && !q.includes('रोग') && !q.includes('நோய்') && !q.includes('fertil') && !q.includes('उर्वरक') && !q.includes('உரம்') && !q.includes('harvest') && !q.includes('कटाई') && !q.includes('அறுவடை')) {
     // Generic response
     const generic: Record<string, string> = {
       en: `Based on your satellite data (NDVI=${ndvi}, Temperature=${temp}°C, Humidity=${humidity}%): Your vegetation health is ${ndviStatus}. Key recommendations: ${ndvi < 0.4 ? '1) Apply fertilizer immediately 2) Check irrigation schedule 3) Inspect for diseases' : '1) Maintain current practices 2) Monitor weekly 3) Prepare for harvest'}. The NDVI trend shows ${ndvi > 0.5 ? 'positive growth momentum' : 'stress that needs attention'}. For specific advice, ask about irrigation, disease, fertilizer, or harvest timing.`,
@@ -94,7 +99,7 @@ router.post('/ask', async (req, res) => {
         const data = await response.json() as any
         const answer = data.candidates?.[0]?.content?.parts?.[0]?.text
         if (answer) return res.json({ answer })
-      } catch(e) {
+      } catch {
         console.log('Gemini failed, using smart fallback')
       }
     }

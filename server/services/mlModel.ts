@@ -27,7 +27,7 @@ function loadModel(filename: string): ModelFile | null {
     const filePath = path.resolve(__dirname, '../ml', filename)
     const raw = fs.readFileSync(filePath, 'utf-8')
     return JSON.parse(raw) as ModelFile
-  } catch (err) {
+  } catch {
     return null
   }
 }

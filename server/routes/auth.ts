@@ -17,7 +17,7 @@ router.post('/register', async (req, res) => {
     const hashed = await bcrypt.hash(password, 10)
     await db.insert(users).values({ name, email, password: hashed, role: role || 'farmer' })
     res.json({ message: 'User registered successfully' })
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: 'Registration failed' })
   }
 })
@@ -33,23 +33,24 @@ router.post('/login', async (req, res) => {
     if (!valid) return res.status(401).json({ error: 'Invalid credentials' })
     const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '7d' })
     res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role } })
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: 'Login failed' })
   }
 })
 
 export default router
 
-router.get('/test-db', async (req, res) => {
+router.get('/test-db', async (_req, res) => {
   try {
     const result = await db.select().from(users).limit(1)
     res.json({ ok: true, count: result.length })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Database test failed'
+    res.status(500).json({ error: message })
   }
 })
 
-router.get('/setup-db', async (req: any, res: any) => {
+router.get('/setup-db', async (_req, res) => {
   try {
     const { sql } = await import('drizzle-orm')
     await db.execute(sql`CREATE TABLE IF NOT EXISTS users (
@@ -75,7 +76,9 @@ router.get('/setup-db', async (req: any, res: any) => {
     )`)
     try {
       await db.execute(sql`ALTER TABLE lands ADD COLUMN lang VARCHAR(10) DEFAULT 'en'`)
-    } catch(e: any) { /* column may already exist */ }
+    } catch {
+      // column may already exist
+    }
     res.json({ ok: true, message: 'Tables created' })
   } catch (err: any) {
     res.status(500).json({ error: err.message })

@@ -29,7 +29,9 @@ function saveSubscriber(data: any) {
       if (fs.existsSync(DB_FILE)) {
         list = JSON.parse(fs.readFileSync(DB_FILE, 'utf-8'))
       }
-    } catch {}
+    } catch {
+      // ignore malformed subscriber data
+    }
     const idx = list.findIndex((s: any) => s.phone === data.phone || s.email === data.email)
     const entry = { ...data, id: Date.now().toString(), createdAt: new Date().toISOString() }
     if (idx >= 0) list[idx] = entry
@@ -111,7 +113,9 @@ router.post('/unsubscribe', async (req, res) => {
     let list: any[] = []
     try {
       if (fs.existsSync(DB_FILE)) list = JSON.parse(fs.readFileSync(DB_FILE, 'utf-8'))
-    } catch {}
+    } catch {
+      // ignore malformed subscriber list
+    }
     const before = list.length
     list = list.filter((s: any) => s.phone !== contact && s.email !== contact)
     if (list.length === before) return res.status(404).json({ error: 'Subscriber not found' })
