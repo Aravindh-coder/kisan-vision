@@ -1,13 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 
 export default function HeroGlobe() {
   const mountRef = useRef<HTMLDivElement>(null)
-  const [fallbackActive, setFallbackActive] = useState(false)
 
   useEffect(() => {
-    const mount = mountRef.current
-    if (!mount) return
+    const mount = mountRef.current!
     const width = mount.clientWidth
     const height = mount.clientHeight
 
@@ -15,20 +13,10 @@ export default function HeroGlobe() {
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000)
     camera.position.z = 2.8
 
-    let renderer: THREE.WebGLRenderer | null = null
-    try {
-      const canvas = document.createElement('canvas')
-      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl')
-      if (!gl) throw new Error('WebGL unavailable')
-
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
-      renderer.setSize(width, height)
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
-      mount.appendChild(renderer.domElement)
-    } catch (error) {
-      setFallbackActive(true)
-      return () => undefined
-    }
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
+    renderer.setSize(width, height)
+    renderer.setPixelRatio(window.devicePixelRatio)
+    mount.appendChild(renderer.domElement)
 
     // Earth
     const earthGeo = new THREE.SphereGeometry(1, 64, 64)
@@ -153,27 +141,15 @@ export default function HeroGlobe() {
       // Gentle camera bob
       camera.position.y = Math.sin(t * 0.3) * 0.1
 
-      renderer?.render(scene, camera)
+      renderer.render(scene, camera)
     }
     animate()
 
     return () => {
       cancelAnimationFrame(animId)
-      renderer?.domElement.remove()
+      mount.removeChild(renderer.domElement)
     }
   }, [])
-
-  if (fallbackActive) {
-    return (
-      <div ref={mountRef} style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'radial-gradient(circle at top, rgba(34,197,94,0.2), rgba(3,7,18,0.95))', borderRadius: '24px' }}>
-        <div style={{ textAlign: 'center', color: '#d1fae5', padding: '24px', maxWidth: '320px' }}>
-          <div style={{ fontSize: '36px', marginBottom: '8px' }}>🛰️</div>
-          <div style={{ fontWeight: 700, marginBottom: '8px' }}>Satellite view unavailable</div>
-          <div style={{ fontSize: '14px', lineHeight: 1.5, color: '#86efac' }}>The browser is not allowing WebGL, so the animated globe is switched off. The rest of the experience remains available.</div>
-        </div>
-      </div>
-    )
-  }
 
   return <div ref={mountRef} style={{ width: '100%', height: '100%' }} />
 }

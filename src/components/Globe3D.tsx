@@ -66,7 +66,6 @@ export default function Globe3D({ onLocationSelect }: Props) {
   const [labels, setLabels] = useState<{ name: string; x: number; y: number; visible: boolean }[]>([])
   const [tooltip, setTooltip] = useState<{ x: number; y: number; name: string } | null>(null)
   const [clicking, setClicking] = useState(false)
-  const [fallbackActive, setFallbackActive] = useState(false)
   const earthRef = useRef<THREE.Mesh | null>(null)
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastHoverKeyRef = useRef<string>('')
@@ -74,8 +73,7 @@ export default function Globe3D({ onLocationSelect }: Props) {
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null)
 
   useEffect(() => {
-    const mount = mountRef.current
-    if (!mount) return
+    const mount = mountRef.current!
     const width = mount.clientWidth
     const height = mount.clientHeight
 
@@ -84,20 +82,10 @@ export default function Globe3D({ onLocationSelect }: Props) {
     camera.position.z = 2.5
     cameraRef.current = camera
 
-    let renderer: THREE.WebGLRenderer | null = null
-    try {
-      const canvas = document.createElement('canvas')
-      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl')
-      if (!gl) throw new Error('WebGL unavailable')
-
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
-      renderer.setSize(width, height)
-      rendererRef.current = renderer
-      mount.appendChild(renderer.domElement)
-    } catch (error) {
-      setFallbackActive(true)
-      return () => undefined
-    }
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
+    renderer.setSize(width, height)
+    rendererRef.current = renderer
+    mount.appendChild(renderer.domElement)
 
     // Earth
     const geometry = new THREE.SphereGeometry(1, 64, 64)
@@ -234,7 +222,7 @@ export default function Globe3D({ onLocationSelect }: Props) {
     const animate = () => {
       animId = requestAnimationFrame(animate)
       if (!isDragging) earth.rotation.y += 0.001
-      renderer?.render(scene, camera)
+      renderer.render(scene, camera)
 
       // Project each country position to screen + check if facing camera
       const updated = labelPositions.map(({ name, worldPos }) => {
@@ -260,23 +248,9 @@ export default function Globe3D({ onLocationSelect }: Props) {
 
     return () => {
       cancelAnimationFrame(animId)
-      renderer?.domElement.remove()
+      mount.removeChild(renderer.domElement)
     }
   }, [])
-
-  if (fallbackActive) {
-    return (
-      <div ref={mountRef} style={{ width: '100%', height: '500px', cursor: 'default', position: 'relative', overflow: 'hidden', borderRadius: '24px', background: 'radial-gradient(circle at top, rgba(34,197,94,0.15), rgba(3,7,18,0.95))' }}>
-        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
-          <div style={{ textAlign: 'center', color: '#d1fae5', maxWidth: '360px' }}>
-            <div style={{ fontSize: '36px', marginBottom: '8px' }}>🌍</div>
-            <div style={{ fontWeight: 700, marginBottom: '8px' }}>Interactive globe unavailable</div>
-            <div style={{ fontSize: '14px', lineHeight: 1.5, color: '#86efac' }}>This browser is not providing WebGL, so the 3D globe is hidden. You can still use the rest of the farm analytics flow.</div>
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div ref={mountRef} style={{ width: '100%', height: '500px', cursor: 'grab', position: 'relative' }}>
