@@ -56,8 +56,8 @@ router.post('/register', async (req, res) => {
     const results: string[] = []
     const warnings: string[] = []
 
-    console.log("EMAIL CHECK:", !!process.env.BREVO_USER, !!process.env.BREVO_PASS)
-    if (process.env.BREVO_USER && process.env.BREVO_PASS) {
+    console.log("EMAIL CHECK:", !!process.env.BREVO_API_KEY)
+    if (process.env.BREVO_API_KEY) {
       try {
         await fetch('https://api.brevo.com/v3/smtp/email', {
         method: 'POST',
