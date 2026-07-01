@@ -9,10 +9,13 @@ dotenv.config()
 const router = express.Router()
 
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 465,
+  secure: true,
+  family: 4,
   auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD },
-  connectionTimeout: 8000,
-  socketTimeout: 8000,
+  connectionTimeout: 10000,
+  socketTimeout: 10000,
 })
 
 const twilioClient = process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN
