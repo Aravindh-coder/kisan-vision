@@ -288,7 +288,11 @@ function clearAll() {
   document.getElementById('register-btn').style.background = '#16a34a'
   document.getElementById('success-box').style.display = 'none'
   document.getElementById('hint-text').textContent = 'Draw your land boundary on the map first'
-  ;['farmer-name','farmer-phone','farmer-email','land-name','crop-type'].forEach(id => document.getElementById(id).value='')
+  const resetIds = ['farmer-name','farmer-phone','farmer-email','land-name','crop-type']
+  for (const id of resetIds) {
+    const el = document.getElementById(id)
+    if (el) el.value = ''
+  }
 }
 
 async function registerLand() {
@@ -312,13 +316,15 @@ async function registerLand() {
 
   try {
     const token = localStorage.getItem('token') || ''
-    const res = await fetch('https://kisan-vision.onrender.com/api/lands/register', {
+    const res = await fetch('/api/lands/register', {
       method: 'POST',
       headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+token },
       body: JSON.stringify({ name, phone, email, landName, cropType, polygonCoords, centerLat, centerLon, detectedLocation, lang: localStorage.getItem('kisan_lang') || 'en' })
     })
-    const data = await res.json()
-    if (data.success) {
+    const text = await res.text()
+    let data = {}
+    try { data = JSON.parse(text) } catch (parseError) { console.error('Registration response parse failed', parseError, text) }
+    if (res.ok && data.success) {
       document.getElementById('success-box').style.display = 'flex'
       let detailText = '📧 ' + email + '\n📍 ' + (detectedLocation || 'Your land')
       if (data.details && data.details.length) {
@@ -326,16 +332,17 @@ async function registerLand() {
       }
       document.getElementById('success-details').textContent = detailText
       btn.textContent = '✅ Registered!'
-        setTimeout(() => { window.location.href = '/my-lands.html?email=' + encodeURIComponent(email) }, 1500)
-        setTimeout(() => { window.location.href = '/my-lands.html?email=' + encodeURIComponent(email) }, 1500)
+      setTimeout(() => { window.location.href = '/my-lands.html?email=' + encodeURIComponent(email) }, 1500)
       btn.style.background = '#065f46'
       btn.disabled = false
     } else {
-      alert(data.error || 'Registration failed')
+      console.error('Registration failed', res.status, text)
+      alert('Registration failed: ' + (data.error || res.statusText || 'Server error'))
       btn.disabled = false
       btn.textContent = '🌾 Register My Land'
     }
   } catch(e) {
+    console.error('Registration error', e)
     alert('Connection error. Please try again.')
     btn.disabled = false
     btn.textContent = '🌾 Register My Land'
@@ -344,7 +351,11 @@ async function registerLand() {
 
 // Auto locate
 if (navigator.geolocation) {
-  navigator.geolocation.getCurrentPosition(p => map.setView([p.coords.latitude, p.coords.longitude], 13))
+  navigator.geolocation.getCurrentPosition(
+    p => map.setView([p.coords.latitude, p.coords.longitude], 13),
+    err => console.warn('Geolocation unavailable:', err),
+    { timeout: 8000 }
+  )
 }
 </script>
 
@@ -356,30 +367,42 @@ if (navigator.geolocation) {
 <script>
 function setHtmlLang(l) { localStorage.setItem('kisan_lang', l); applyLang(); }
 function applyLang() {
-  const htmlLang = localStorage.getItem('kisan_lang') || 'en'
+  const htmlLang = String(localStorage.getItem('kisan_lang') || 'en').toLowerCase()
   const mapT = {
     en: { name: 'Full Name *', phone: 'WhatsApp Number (+91...)', email: 'Email Address (for daily reports)', landName: 'Farm / Land Name (optional)', crop: 'Current Crop (e.g. Rice, Wheat)', register: '🌾 Register My Land' },
     hi: { name: 'किसान का नाम *', phone: 'WhatsApp नंबर (+91...)', email: 'ईमेल पता (दैनिक रिपोर्ट के लिए)', landName: 'जमीन का नाम (वैकल्पिक)', crop: 'फसल प्रकार (जैसे धान, गेहूं)', register: '🌾 मेरी जमीन दर्ज करें' },
     ta: { name: 'விவசாயி பெயர் *', phone: 'WhatsApp எண் (+91...)', email: 'மின்னஞ்சல் (தினசரி அறிக்கைக்கு)', landName: 'நில பெயர் (விருப்பம்)', crop: 'தற்போதைய பயிர் (எ.கா. நெல், கோதுமை)', register: '🌾 என் நிலத்தை பதிவு செய்' }
   }
-  const mt = mapT[htmlLang] || mapT['en']
-  const fields = {
-    'farmer-name': mt.name, 'farmer-phone': mt.phone,
-    'farmer-email': mt.email, 'land-name': mt.landName, 'crop-type': mt.crop
+  const mt = mapT[htmlLang] || mapT.en
+  if (!mt) return
+
+  const fields = [
+    { id: 'farmer-name', value: mt.name },
+    { id: 'farmer-phone', value: mt.phone },
+    { id: 'farmer-email', value: mt.email },
+    { id: 'land-name', value: mt.landName },
+    { id: 'crop-type', value: mt.crop }
+  ]
+
+  if (Array.isArray(fields)) {
+    fields.forEach(field => {
+      const el = document.getElementById(field.id)
+      if (el && field.value) el.placeholder = field.value
+    })
   }
-  Object.entries(fields).forEach(([id, ph]) => {
-    const el = document.getElementById(id)
-    if (el) el.placeholder = ph
-  })
+
   const btn = document.getElementById('register-btn')
-  if (btn) btn.textContent = mt.register
-  // Highlight active
-  ['en','hi','ta'].forEach(l => {
+  if (btn) btn.textContent = mt.register || btn.textContent
+
+  const langButtons = ['en','hi','ta']
+  for (const l of langButtons) {
     const b = document.getElementById('btn-' + l)
     if (b) b.style.background = l === htmlLang ? '#16a34a' : 'transparent'
-  })
+  }
 }
-document.addEventListener('DOMContentLoaded', applyLang)
+document.addEventListener('DOMContentLoaded', function () {
+  try { applyLang() } catch (e) { console.error('applyLang failed', e) }
+})
 </script>
 </body>
 </html>

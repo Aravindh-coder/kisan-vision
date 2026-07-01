@@ -389,7 +389,6 @@ export default function Satellite() {
           <button onClick={() => window.open('/my-lands.html', '_blank')} style={{ background: 'rgba(22,101,52,0.3)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.3)', borderRadius: '10px', padding: '7px 16px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>{t.myLands}</button>
           <button onClick={() => window.open('/weather-alert.html', '_blank')} style={{ background: 'rgba(234,179,8,0.2)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.4)', borderRadius: '10px', padding: '7px 16px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>🌡️ Weather Alert</button>
           <LangSwitcher />
-          <button onClick={() => window.open('/land-map.html', '_blank')} style={{ background: 'rgba(22,163,74,0.8)', color: '#fff', border: 'none', borderRadius: '10px', padding: '7px 16px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>{t.registerLand}</button>
         </div>
       </nav>
 
@@ -536,9 +535,6 @@ export default function Satellite() {
                 </p>
               </div>
               <div style={{ display: 'flex', gap: '10px' }}>
-                <button onClick={() => window.open('/land-map.html', '_blank')} style={{ background: 'rgba(22,163,74,0.3)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.3)', borderRadius: '10px', padding: '8px 16px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
-                  ➕ Register This Land
-                </button>
               </div>
             </div>
 
