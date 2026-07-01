@@ -77,6 +77,46 @@ function getSmartAnswer(question: string, context: string, lang: string): string
     : 'Please ask about irrigation, disease, fertilizer, or harvest timing.'
 }
 
+router.post('/', async (req, res) => {
+  try {
+    const question = req.body?.question || req.body?.message || ''
+    const context = req.body?.context || ''
+    const lang = req.body?.lang || 'en'
+    const apiKey = process.env.GROQ_API_KEY
+
+    if (!apiKey) return res.status(500).json({ error: 'GROQ_API_KEY not set in .env' })
+
+    const systemPrompt = lang === 'ta'
+      ? 'You are KISAN AI, expert agricultural scientist. Reply in Tamil. Give detailed farming advice.'
+      : lang === 'hi'
+      ? 'You are KISAN AI, expert agricultural scientist. Reply in Hindi. Give detailed farming advice.'
+      : 'You are KISAN AI, an expert agricultural scientist specializing in Indian farming, crops, soil science, and satellite remote sensing. Give comprehensive, detailed, actionable advice with specific quantities, product names, and timelines relevant to Indian agriculture.'
+
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + apiKey
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: context ? 'Farm data: ' + context + ' | Question: ' + question : question }
+        ],
+        max_tokens: 1200,
+        temperature: 0.7
+      })
+    })
+
+    const data = await response.json() as any
+    if (data.error) return res.status(500).json({ error: data.error.message })
+    res.json({ answer: data.choices?.[0]?.message?.content || 'No response from Groq' })
+  } catch (err: any) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
 router.post('/ask', async (req, res) => {
   try {
     const { question, context, lang } = req.body

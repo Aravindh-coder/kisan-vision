@@ -53,11 +53,11 @@ export default function ChatAssistant({ satelliteContext }: Props) {
             .join(' | ')
         : ''
 
-      const res = await axios.post('https://kisan-vision.onrender.com/api/chat',
-        { message: text, context: contextText || null },
+      const res = await axios.post('/api/chat',
+        { question: text, context: contextText || null, lang: 'en' },
         { headers: { Authorization: `Bearer ${token}` } }
       )
-      setMessages(prev => [...prev, { role: 'assistant', text: res.data.reply }])
+      setMessages(prev => [...prev, { role: 'assistant', text: res.data.answer || res.data.reply || 'Sorry, I could not answer that right now.' }])
     } catch {
       setMessages(prev => [...prev, {
         role: 'assistant',
@@ -82,8 +82,8 @@ export default function ChatAssistant({ satelliteContext }: Props) {
           </div>
         ) : (
           <div className="relative">
-            <div className="bg-gradient-to-br from-green-400 to-emerald-600 rounded-full w-16 h-16 flex items-center justify-center text-3xl shadow-lg">
-              👩‍🌾
+            <div className="bg-gradient-to-br from-green-400 to-emerald-600 rounded-full w-16 h-16 flex items-center justify-center shadow-lg overflow-hidden border-2 border-white/80">
+              <img src="/assistant-girl.svg" alt="Kisan AI assistant" className="w-full h-full object-cover" />
             </div>
             <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
               AI
@@ -100,8 +100,8 @@ export default function ChatAssistant({ satelliteContext }: Props) {
         >
           {/* Header */}
           <div className="bg-gradient-to-r from-green-700 to-emerald-600 rounded-t-2xl px-4 py-3 flex items-center gap-3">
-            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-2xl shadow">
-              👩‍🌾
+            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow overflow-hidden border-2 border-green-200">
+              <img src="/assistant-girl.svg" alt="Kisan AI assistant" className="w-full h-full object-cover" />
             </div>
             <div>
               <p className="font-bold text-white text-base">Kisan-AI</p>
