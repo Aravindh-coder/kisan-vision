@@ -10,7 +10,9 @@ const router = express.Router()
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
-  auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD }
+  auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD },
+  connectionTimeout: 8000,
+  socketTimeout: 8000,
 })
 
 const twilioClient = process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN
@@ -48,10 +50,12 @@ router.post('/register', async (req, res) => {
     }
 
     const coordsJson = JSON.stringify(polygonCoords)
+    const lat = Number(centerLat)
+    const lon = Number(centerLon)
 
     await db.execute(sql`
       INSERT INTO lands (farmer_name, phone, email, land_name, crop_type, polygon_coords, center_lat, center_lon, detected_location, lang)
-      VALUES (${name}, ${phone}, ${email}, ${landName||null}, ${cropType||null}, ${coordsJson}, ${centerLat}, ${centerLon}, ${detectedLocation||null}, ${lang||'en'})
+      VALUES (${name}, ${phone}, ${email}, ${landName||null}, ${cropType||null}, ${coordsJson}, ${lat}, ${lon}, ${detectedLocation||null}, ${lang||'en'})
     `)
 
     const today = new Date().toLocaleDateString('en-IN', { day:'2-digit', month:'long', year:'numeric' })
@@ -81,7 +85,7 @@ router.post('/register', async (req, res) => {
                   ${landName ? `<p style="color:#86efac;margin:4px 0;font-size:13px">🌾 Farm: <strong>${landName}</strong></p>` : ''}
                   ${cropType ? `<p style="color:#86efac;margin:4px 0;font-size:13px">🌱 Crop: <strong>${cropType}</strong></p>` : ''}
                   <p style="color:#86efac;margin:4px 0;font-size:13px">📅 Date: <strong>${today}</strong></p>
-                  <p style="color:#86efac;margin:4px 0;font-size:13px">🗺️ Coordinates: <strong>${centerLat.toFixed(4)}°N, ${centerLon.toFixed(4)}°E</strong></p>
+                  <p style="color:#86efac;margin:4px 0;font-size:13px">🗺️ Coordinates: <strong>${lat.toFixed(4)}°N, ${lon.toFixed(4)}°E</strong></p>
                 </div>
                 <div style="background:#0c1a0c;border:1px solid #1a3a1a;border-radius:10px;padding:16px;margin-bottom:20px">
                   <p style="color:#4ade80;margin:0 0 10px;font-size:13px;font-weight:700">📡 DAILY REPORTS AT 6 AM INCLUDE</p>
