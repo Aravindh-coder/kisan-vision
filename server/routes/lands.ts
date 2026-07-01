@@ -62,6 +62,7 @@ router.post('/register', async (req, res) => {
     const results: string[] = []
     const warnings: string[] = []
 
+    console.log("EMAIL CHECK:", !!process.env.GMAIL_USER, !!process.env.GMAIL_APP_PASSWORD)
     if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
       try {
         await transporter.sendMail({
@@ -107,6 +108,7 @@ router.post('/register', async (req, res) => {
       }
     }
 
+    console.log("TWILIO CHECK:", !!twilioClient, "phone:", phone)
     if (twilioClient) {
       try {
         await twilioClient.messages.create({
