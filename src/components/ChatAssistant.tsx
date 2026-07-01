@@ -8,15 +8,7 @@ interface Message {
 }
 
 interface Props {
-  satelliteContext?: {
-    ndvi: number
-    ndwi: number
-    evi: number
-    advisory: string
-    landCover: string
-    crop: string
-    season: string
-  }
+  satelliteContext?: Record<string, unknown> | null
 }
 
 const SUGGESTIONS = [
@@ -50,8 +42,19 @@ export default function ChatAssistant({ satelliteContext }: Props) {
     setInput('')
     setLoading(true)
     try {
+      const contextText = satelliteContext
+        ? Object.entries(satelliteContext)
+            .map(([key, value]) => {
+              if (value === null || value === undefined) return ''
+              if (typeof value === 'object') return `${key}: ${JSON.stringify(value)}`
+              return `${key}: ${String(value)}`
+            })
+            .filter(Boolean)
+            .join(' | ')
+        : ''
+
       const res = await axios.post('https://kisan-vision.onrender.com/api/chat',
-        { message: text, context: satelliteContext || null },
+        { message: text, context: contextText || null },
         { headers: { Authorization: `Bearer ${token}` } }
       )
       setMessages(prev => [...prev, { role: 'assistant', text: res.data.reply }])

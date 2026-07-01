@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import ChatAssistant from '../components/ChatAssistant'
 
 const COLORS = {
   bg: '#030a03',
@@ -124,6 +125,9 @@ export default function CropDetect() {
   const statusBg = (s: HealthStatus) => s==='HEALTHY'?'rgba(74,222,128,0.08)':s==='WARNING'?'rgba(251,191,36,0.08)':'rgba(239,68,68,0.08)'
   const reportId = 'KV-REPORT'
   const statusBorder = (s: HealthStatus) => s==='HEALTHY'?'rgba(74,222,128,0.3)':s==='WARNING'?'rgba(251,191,36,0.3)':'rgba(239,68,68,0.3)'
+  const assistantContext = report
+    ? { crop: report.cropType, location: report.location, farmerName: report.farmerName, healthStatus: report.healthStatus, problem: report.problemName, severity: report.severity, treatment: report.step1 }
+    : { crop: cropType || 'unknown crop', location: location || 'unknown location', farmerName: farmerName || 'farmer', cropAge: cropAge || 'not specified' }
 
   return (
     <div style={{minHeight:'100vh',color:COLORS.text,fontFamily:'system-ui,Arial,sans-serif',position:'relative'}}>
@@ -311,6 +315,7 @@ export default function CropDetect() {
           </div>
         )}
       </div>
+      <ChatAssistant satelliteContext={assistantContext} />
     </div>
     </div>
   )
