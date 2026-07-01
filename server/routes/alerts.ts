@@ -12,6 +12,28 @@ const twilioClient = process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_T
   ? twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN)
   : null
 
+// Normalizes any Indian number format into strict E.164 (+91XXXXXXXXXX)
+// Returns null if it can't produce a valid-looking number.
+function normalizePhone(raw: string): string | null {
+  if (!raw) return null
+  let p = raw.replace(/[\s\-().]/g, '')
+  if (p.startsWith('+')) {
+    // already has a country code
+  } else if (p.startsWith('91') && p.length === 12) {
+    p = '+' + p
+  } else if (p.length === 10 && /^[6-9]/.test(p)) {
+    // bare 10-digit Indian mobile number
+    p = '+91' + p
+  } else if (p.startsWith('0') && p.length === 11) {
+    p = '+91' + p.slice(1)
+  } else {
+    p = '+' + p.replace(/^\+/, '')
+  }
+  // E.164: + followed by 8-15 digits
+  if (!/^\+[1-9]\d{7,14}$/.test(p)) return null
+  return p
+}
+
 function saveSubscriber(data: any) {
   try {
     let list: any[] = []
@@ -56,11 +78,29 @@ async function sendBrevoEmail(to: string, subject: string, htmlContent: string) 
   return data
 }
 
+// Turns a raw Twilio error into a message a farmer-facing UI can actually show
+function friendlyTwilioError(e: any): string {
+  const msg = e?.message || 'Unknown error'
+  const code = e?.code
+  if (code === 63015 || code === 63016 || code === 63018 || /not currently opted in|not opted-in|sandbox/i.test(msg)) {
+    return 'This number has not joined the WhatsApp sandbox yet. Ask them to send the join code on WhatsApp to +1 415 523 8886 first, then try again.'
+  }
+  if (code === 21211 || /not a valid phone number/i.test(msg)) {
+    return 'Invalid phone number format.'
+  }
+  return 'WhatsApp failed: ' + msg
+}
+
 router.post('/subscribe', async (req, res) => {
   try {
-    const { phone, email, lat, lon, locationName, name } = req.body
+    const { phone: rawPhone, email, lat, lon, locationName, name } = req.body
     if (!lat || !lon) return res.status(400).json({ error: 'Location required' })
-    if (!phone && !email) return res.status(400).json({ error: 'Phone or email required' })
+    if (!rawPhone && !email) return res.status(400).json({ error: 'Phone or email required' })
+
+    const phone = rawPhone ? normalizePhone(rawPhone) : null
+    if (rawPhone && !phone) {
+      return res.status(400).json({ error: 'That phone number doesn\'t look valid. Use format +919876543210.' })
+    }
 
     saveSubscriber({
       name: name || 'Farmer', phone: phone || '', email: email || '',
@@ -117,7 +157,6 @@ Powered by KISAN-VISION 🛰️`
     const results: string[] = []
     const warnings: string[] = []
 
-    // WhatsApp via Twilio
     if (phone && twilioClient) {
       try {
         await twilioClient.messages.create({
@@ -127,12 +166,13 @@ Powered by KISAN-VISION 🛰️`
         })
         results.push('WhatsApp sent')
       } catch (e: any) {
-        console.error('WhatsApp error:', e.message)
-        warnings.push('WhatsApp failed: ' + e.message)
+        console.error('WhatsApp error:', e.message, 'code:', e.code)
+        warnings.push(friendlyTwilioError(e))
       }
+    } else if (phone && !twilioClient) {
+      warnings.push('WhatsApp is not configured on the server.')
     }
 
-    // Email via Brevo HTTP API
     if (email && process.env.BREVO_API_KEY) {
       try {
         await sendBrevoEmail(email, `🌾 KISAN-VISION Daily Report — ${loc}`, htmlMsg)

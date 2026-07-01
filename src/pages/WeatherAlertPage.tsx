@@ -61,6 +61,9 @@ export default function WeatherAlertPage() {
         if (successRef.current) {
           successRef.current.style.display = 'flex'
         }
+        if (data.warnings && data.warnings.length) {
+          alert('Some parts of the report could not be sent:\n\n' + data.warnings.join('\n'))
+        }
         btn.textContent = '✅ Send Another Report'
         btn.disabled = false
         btn.style.opacity = '1'
