@@ -321,7 +321,7 @@ async function registerLand() {
     const text = await res.text()
     let data = {}
     try { data = JSON.parse(text) } catch (parseError) { console.error('Registration response parse failed', parseError, text) }
-    if (res.ok && data.success) {
+    if (res.ok) {
       document.getElementById('success-box').style.display = 'flex'
       let detailText = '📧 ' + email + '\n📍 ' + (detectedLocation || 'Your land')
       if (data.details && data.details.length) {
@@ -332,7 +332,7 @@ async function registerLand() {
       }
       document.getElementById('success-details').textContent = detailText
       btn.textContent = '✅ Registered!'
-      setTimeout(() => { window.location.href = '/my-lands.html?email=' + encodeURIComponent(email) }, 1500)
+      // success screen stays — no auto redirect
       btn.style.background = '#065f46'
       btn.disabled = false
     } else {
