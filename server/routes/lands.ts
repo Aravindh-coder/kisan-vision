@@ -1,22 +1,13 @@
 import express from 'express'
 import { db } from '../db/index'
 import { sql } from 'drizzle-orm'
-import nodemailer from 'nodemailer'
+// nodemailer removed — using Brevo HTTP API
 import twilio from 'twilio'
 import dotenv from 'dotenv'
 dotenv.config()
 
 const router = express.Router()
 
-const transporter = nodemailer.createTransport({
-  host: 'smtp-relay.brevo.com',
-  port: 587,
-  secure: false,
-  auth: {
-    user: process.env.BREVO_USER,
-    pass: process.env.BREVO_PASS,
-  },
-} as any)
 
 const twilioClient = process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN
   ? twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN)
@@ -68,43 +59,19 @@ router.post('/register', async (req, res) => {
     console.log("EMAIL CHECK:", !!process.env.BREVO_USER, !!process.env.BREVO_PASS)
     if (process.env.BREVO_USER && process.env.BREVO_PASS) {
       try {
-        await transporter.sendMail({
-          from: `"KISAN-VISION 🛰️" <${process.env.BREVO_USER}>`,
-          to: email,
+        await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'api-key': process.env.BREVO_API_KEY || '',
+        },
+        body: JSON.stringify({
+          sender: { name: 'KISAN-VISION', email: process.env.BREVO_SENDER_EMAIL || 'aravindhjoshua997@gmail.com' },
+          to: [{ email }],
           subject: '✅ Land Registration Confirmed — KISAN-VISION',
-          html: `
-            <div style="font-family:Arial,sans-serif;max-width:500px;margin:0 auto;background:#030a03;color:#f0fdf4;border-radius:16px;overflow:hidden;border:1px solid #166534">
-              <div style="background:#052e16;padding:24px;text-align:center;border-bottom:1px solid #166534">
-                <h1 style="color:#4ade80;margin:0;font-size:22px">🌾 KISAN-VISION</h1>
-                <p style="color:#365f45;margin:4px 0 0;font-size:12px">Satellite-Powered Precision Agriculture</p>
-              </div>
-              <div style="padding:24px">
-                <h2 style="color:#4ade80;margin:0 0 16px">✅ Land Registration Confirmed!</h2>
-                <p style="color:#86efac;margin:0 0 20px">Dear <strong>${name}</strong>, your land has been successfully registered.</p>
-                <div style="background:#052e16;border:1px solid #166534;border-radius:10px;padding:16px;margin-bottom:20px">
-                  <p style="color:#4ade80;margin:0 0 10px;font-size:13px;font-weight:700">📋 REGISTRATION DETAILS</p>
-                  <p style="color:#86efac;margin:4px 0;font-size:13px">👤 Name: <strong>${name}</strong></p>
-                  <p style="color:#86efac;margin:4px 0;font-size:13px">📱 WhatsApp: <strong>${phone}</strong></p>
-                  <p style="color:#86efac;margin:4px 0;font-size:13px">📍 Location: <strong>${detectedLocation || 'Your registered land'}</strong></p>
-                  ${landName ? `<p style="color:#86efac;margin:4px 0;font-size:13px">🌾 Farm: <strong>${landName}</strong></p>` : ''}
-                  ${cropType ? `<p style="color:#86efac;margin:4px 0;font-size:13px">🌱 Crop: <strong>${cropType}</strong></p>` : ''}
-                  <p style="color:#86efac;margin:4px 0;font-size:13px">📅 Date: <strong>${today}</strong></p>
-                  <p style="color:#86efac;margin:4px 0;font-size:13px">🗺️ Coordinates: <strong>${lat.toFixed(4)}°N, ${lon.toFixed(4)}°E</strong></p>
-                </div>
-                <div style="background:#0c1a0c;border:1px solid #1a3a1a;border-radius:10px;padding:16px;margin-bottom:20px">
-                  <p style="color:#4ade80;margin:0 0 10px;font-size:13px;font-weight:700">📡 DAILY REPORTS AT 6 AM INCLUDE</p>
-                  <p style="color:#9ca3af;margin:4px 0;font-size:12px">🌿 NDVI vegetation health index</p>
-                  <p style="color:#9ca3af;margin:4px 0;font-size:12px">💧 Soil moisture and stress levels</p>
-                  <p style="color:#9ca3af;margin:4px 0;font-size:12px">🛰️ Sentinel-2 satellite analysis</p>
-                  <p style="color:#9ca3af;margin:4px 0;font-size:12px">🌡️ Temperature and humidity forecast</p>
-                  <p style="color:#9ca3af;margin:4px 0;font-size:12px">💦 Smart irrigation advisory</p>
-                  <p style="color:#9ca3af;margin:4px 0;font-size:12px">⚠️ Disease and pest risk alerts</p>
-                </div>
-                <p style="color:#365f45;font-size:11px;text-align:center">KISAN-VISION 🛰️ · Sentinel-2 + OpenWeatherMap<br>Daily reports start tomorrow at 6:00 AM</p>
-              </div>
-            </div>
-          `
+          htmlContent: `<div style='font-family:Arial,sans-serif;max-width:500px;margin:0 auto;background:#030a03;color:#f0fdf4;border-radius:16px;overflow:hidden;border:1px solid #166534'><div style='background:#052e16;padding:24px;text-align:center'><h1 style='color:#4ade80;margin:0'>🌾 KISAN-VISION</h1></div><div style='padding:24px'><h2 style='color:#4ade80'>✅ Land Registered!</h2><p style='color:#86efac'>Dear ${name}, your land has been successfully registered.</p><p style='color:#86efac'>📍 ${detectedLocation || 'Your land'}</p><p style='color:#86efac'>📅 ${today}</p><p style='color:#86efac'>🗺️ ${lat.toFixed(4)}°N, ${lon.toFixed(4)}°E</p><p style='color:#9ca3af'>Daily satellite reports will arrive at 6 AM every morning.</p></div></div>`
         })
+      })
         results.push('Email sent')
       } catch (e: any) {
         warnings.push('Email failed: ' + (e.message || 'Unknown error'))
