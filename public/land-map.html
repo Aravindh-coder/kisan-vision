@@ -352,7 +352,7 @@ async function registerLand() {
 if (navigator.geolocation) {
   navigator.geolocation.getCurrentPosition(
     p => map.setView([p.coords.latitude, p.coords.longitude], 13),
-    err => console.warn('Geolocation unavailable:', err),
+    () => {},
     { timeout: 8000 }
   )
 }
