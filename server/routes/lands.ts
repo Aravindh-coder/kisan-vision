@@ -9,14 +9,13 @@ dotenv.config()
 const router = express.Router()
 
 const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 465,
-  secure: true,
-  auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD },
-  connectionTimeout: 10000,
-  socketTimeout: 10000,
-  tls: { rejectUnauthorized: false },
-  family: 4,
+  host: 'smtp-relay.brevo.com',
+  port: 587,
+  secure: false,
+  auth: {
+    user: process.env.BREVO_USER,
+    pass: process.env.BREVO_PASS,
+  },
 } as any)
 
 const twilioClient = process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN
@@ -67,7 +66,7 @@ router.post('/register', async (req, res) => {
     const warnings: string[] = []
 
     console.log("EMAIL CHECK:", !!process.env.GMAIL_USER, !!process.env.GMAIL_APP_PASSWORD)
-    if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
+    if (process.env.BREVO_USER && process.env.BREVO_PASS) {
       try {
         await transporter.sendMail({
           from: `"KISAN-VISION 🛰️" <${process.env.GMAIL_USER}>`,
