@@ -65,11 +65,11 @@ router.post('/register', async (req, res) => {
     const results: string[] = []
     const warnings: string[] = []
 
-    console.log("EMAIL CHECK:", !!process.env.GMAIL_USER, !!process.env.GMAIL_APP_PASSWORD)
+    console.log("EMAIL CHECK:", !!process.env.BREVO_USER, !!process.env.BREVO_PASS)
     if (process.env.BREVO_USER && process.env.BREVO_PASS) {
       try {
         await transporter.sendMail({
-          from: `"KISAN-VISION 🛰️" <${process.env.GMAIL_USER}>`,
+          from: `"KISAN-VISION 🛰️" <${process.env.BREVO_USER}>`,
           to: email,
           subject: '✅ Land Registration Confirmed — KISAN-VISION',
           html: `
